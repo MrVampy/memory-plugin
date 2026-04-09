@@ -63,3 +63,19 @@ relationship naturally occurs in context.
 ## Navigation
 
 The index shows every entry with its id, title, kind, and link labels. Use this to decide what to read. Follow `[[links]]` to traverse related knowledge. The labels tell you whether a link is worth following without opening the target.
+
+## Automatic Memory (IMPORTANT)
+
+You MUST proactively save knowledge to the wiki during conversations. Do not wait to be asked. After completing a task or discussion, assess whether anything worth remembering emerged:
+
+- **Insights or decisions** — anything the user or you concluded that would be useful in future sessions
+- **Technical knowledge** — research findings, how things work, architecture understanding
+- **User preferences and feedback** — how the user wants to work, corrections they gave, approaches they confirmed
+- **Project context** — decisions made, why something was done a certain way, what was tried and rejected
+
+**When NOT to save:**
+- Ephemeral task details (specific file edits, debugging steps)
+- Things already in the wiki (check the index first)
+- Information derivable from code or git history
+
+**How:** Write the entry directly using the Write tool. The Stop hook validates and regenerates the index automatically. Link to existing entries where relevant — check the index to find connections.
