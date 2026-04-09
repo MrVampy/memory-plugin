@@ -2,7 +2,8 @@
 # PostToolUse hook — validate wiki after writes to wiki files
 # Receives JSON on stdin with tool_input.file_path
 
-MEMORY_CLI="$HOME/.claude/plugins/memory/memory"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$(dirname "$(readlink -f "$0")")")}"
+MEMORY_CLI="$PLUGIN_ROOT/bin/memory"
 GLOBAL_WIKI="$HOME/.claude/.memory/wiki"
 
 # Read stdin

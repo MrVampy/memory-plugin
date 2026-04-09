@@ -16,7 +16,6 @@ $(cat "$GLOBAL_INDEX")"
 fi
 
 # Check for project wiki index
-INPUT_JSON=$(echo '{}')  # stdin already consumed
 CWD="${CWD:-$(pwd)}"
 PROJECT_INDEX="$CWD/.memory/wiki/INDEX.md"
 if [ -f "$PROJECT_INDEX" ]; then

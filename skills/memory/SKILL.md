@@ -1,3 +1,8 @@
+---
+name: memory
+description: Read, write, and navigate the typed wiki memory system. Use when you need to store knowledge for future sessions or recall previously stored knowledge.
+---
+
 # Memory Wiki
 
 You have access to a persistent, typed wiki for storing and retrieving knowledge across sessions.
@@ -48,13 +53,7 @@ relationship naturally occurs in context.
 3. **Create entries** using the Write tool — write the full markdown file to `~/.claude/.memory/wiki/<id>.md`.
 4. **Update entries** using the Edit tool — modify frontmatter or body as needed. Update `meta.updated` and add the session to `meta.sources`.
 5. **After any wiki write/edit**, the validator runs automatically and will report errors. Fix any errors it finds.
-
-## Index Regeneration
-
-After creating or updating entries, regenerate the index:
-```
-node ~/.claude/plugins/memory/bin/memory.mjs index ~/.claude/.memory/wiki
-```
+6. **Regenerate the index** after changes: `memory index ~/.claude/.memory/wiki`
 
 ## What Goes Where
 

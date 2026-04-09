@@ -15,29 +15,42 @@ echo "Installing plugin..."
 mkdir -p "$PLUGIN_DIR"
 mkdir -p "$WIKI_DIR"
 
-# Copy entire compiled JS output (includes all dependencies)
+# Copy plugin manifest
+cp -r .claude-plugin "$PLUGIN_DIR/"
+
+# Copy skills
+rm -rf "$PLUGIN_DIR/skills"
+cp -r skills "$PLUGIN_DIR/"
+
+# Copy hooks (scripts + hooks.json)
+rm -rf "$PLUGIN_DIR/hooks"
+cp -r hooks "$PLUGIN_DIR/"
+chmod +x "$PLUGIN_DIR/hooks/"*.sh
+
+# Copy compiled JS output as bin/ (includes all dependencies)
 rm -rf "$PLUGIN_DIR/bin"
-cp -r build/dev/javascript "$PLUGIN_DIR/bin"
+mkdir -p "$PLUGIN_DIR/bin"
+
+# The CLI wrapper
+cat > "$PLUGIN_DIR/bin/memory" << 'WRAPPER'
+#!/bin/bash
+PLUGIN_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
+exec node "$PLUGIN_DIR/lib/memory/gleam@@private_main_v1.15.2.mjs" "$@"
+WRAPPER
+chmod +x "$PLUGIN_DIR/bin/memory"
+
+# The compiled Gleam output
+cp -r build/dev/javascript "$PLUGIN_DIR/lib"
 
 # Install npm dependencies (js-yaml needed by yay on JS target)
-cd "$PLUGIN_DIR/bin"
+cd "$PLUGIN_DIR/lib"
 if [ ! -f package.json ]; then
   echo '{"type":"module","dependencies":{"js-yaml":"^4.1.0"}}' > package.json
 fi
 npm install --silent
-cd "$SCRIPT_DIR"
-
-# Copy skill and CLI wrapper
-cp plugin/skill.md "$PLUGIN_DIR/skill.md"
-cp plugin/memory "$PLUGIN_DIR/memory"
-chmod +x "$PLUGIN_DIR/memory"
-
-# Copy hooks if they exist
-if [ -d plugin/hooks ]; then
-  cp -r plugin/hooks "$PLUGIN_DIR/"
-fi
 
 echo "✓ Plugin installed to $PLUGIN_DIR"
 echo "✓ Wiki directory at $WIKI_DIR"
 echo ""
-echo "Run with: node $PLUGIN_DIR/bin/memory/memory.mjs validate|index [path]"
+echo "Load with: claude --plugin-dir $PLUGIN_DIR"
+echo "Or add as local marketplace: /plugin marketplace add $HOME/.claude/plugins"

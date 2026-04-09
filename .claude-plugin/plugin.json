@@ -1,0 +1,14 @@
+{
+  "name": "memory",
+  "version": "0.1.0",
+  "description": "Typed wiki memory system — Gleam-validated, Karpathy wiki pattern",
+  "author": {
+    "name": "MrVampy",
+    "url": "https://github.com/MrVampy"
+  },
+  "repository": "https://github.com/MrVampy/Memory",
+  "license": "MIT",
+  "keywords": ["memory", "wiki", "gleam"],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
+}
