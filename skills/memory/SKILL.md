@@ -85,11 +85,26 @@ You MUST proactively save knowledge to the wiki during conversations. Do not wai
 - Things already in the wiki (check the index first)
 - Information derivable from code or git history
 
-**How:** Write the entry directly using the Write tool. Link to existing entries where relevant — check the index to find connections.
+**How:** Always use a **background Sonnet subagent** for memory writes. Spawn it with the Agent tool:
+
+```
+Agent({
+  description: "Save wiki memory",
+  model: "sonnet",
+  run_in_background: true,
+  prompt: "You are the memory writer for a typed wiki system. <include full context of what to save, the current INDEX.md content, and the entry format rules from this skill>. Write the wiki entry/entries to ~/.claude/.memory/wiki/<id>.md using the Write tool. Follow all rules: frontmatter with id/title/kind/links/meta, [[refs]] in body matching frontmatter links, ISO 8601 timestamps. Check the index for existing related entries and link to them."
+})
+```
+
+The subagent runs on Sonnet in the background — the main conversation continues uninterrupted. The Stop hook validates and regenerates the index when the subagent finishes.
+
+**Important:** Include the current wiki index content in the subagent prompt so it knows what exists and can link to relevant entries.
 
 ## Compile Mode (`/memory compile`)
 
-When invoked with `compile`:
+When invoked with `compile`, spawn a **Sonnet subagent** (foreground, since the user explicitly asked for compilation):
+
+The subagent should:
 
 1. List all files in `~/.claude/.memory/raw/` recursively (sessions/, inbox/, etc.)
 2. For each unprocessed file:
