@@ -1,11 +1,19 @@
 ---
 name: memory
 description: Read, write, and navigate the typed wiki memory system. Use when you need to store knowledge for future sessions or recall previously stored knowledge.
+argument-hint: "[compile] [what to remember]"
 ---
 
 # Memory Wiki
 
 You have access to a persistent, typed wiki for storing and retrieving knowledge across sessions.
+
+## Commands
+
+- **`/memory <what to remember>`** — Save something specific to the wiki right now. Read the index, create or update the appropriate entry.
+- **`/memory compile`** — Process uncompiled raw material from `~/.claude/.memory/raw/`. Read each file, extract knowledge worth keeping, write wiki entries, then move the source to `~/.claude/.memory/processed/`.
+
+Arguments: $ARGUMENTS
 
 ## Wiki Location
 
@@ -52,8 +60,7 @@ relationship naturally occurs in context.
 2. **Follow links** by reading entries referenced in the index or in other entries.
 3. **Create entries** using the Write tool — write the full markdown file to `~/.claude/.memory/wiki/<id>.md`.
 4. **Update entries** using the Edit tool — modify frontmatter or body as needed. Update `meta.updated` and add the session to `meta.sources`.
-5. **After any wiki write/edit**, the validator runs automatically and will report errors. Fix any errors it finds.
-6. **Regenerate the index** after changes: `memory index ~/.claude/.memory/wiki`
+5. **After any wiki write/edit**, the Stop hook validates and regenerates the index automatically.
 
 ## What Goes Where
 
@@ -78,4 +85,19 @@ You MUST proactively save knowledge to the wiki during conversations. Do not wai
 - Things already in the wiki (check the index first)
 - Information derivable from code or git history
 
-**How:** Write the entry directly using the Write tool. The Stop hook validates and regenerates the index automatically. Link to existing entries where relevant — check the index to find connections.
+**How:** Write the entry directly using the Write tool. Link to existing entries where relevant — check the index to find connections.
+
+## Compile Mode (`/memory compile`)
+
+When invoked with `compile`:
+
+1. List all files in `~/.claude/.memory/raw/` recursively (sessions/, inbox/, etc.)
+2. For each unprocessed file:
+   a. Read it. Determine the format (JSONL session transcript, markdown notes, etc.)
+   b. Extract knowledge worth keeping — insights, decisions, technical findings, user preferences
+   c. Check the wiki index for existing related entries — update them or create new ones
+   d. Write wiki entries with proper links to existing entries
+   e. Move the source file to `~/.claude/.memory/processed/` (preserving subdirectory structure)
+3. Report what was processed and what entries were created/updated.
+
+**Important:** Session transcripts can be large. Focus on extracting the *conclusions* — what was decided, learned, or discovered. Skip the back-and-forth debugging, tool call details, and ephemeral task steps.
