@@ -1,0 +1,4 @@
+#!/bin/bash
+# Memory wiki CLI — thin wrapper around compiled Gleam
+PLUGIN_DIR="$(dirname "$(readlink -f "$0")")"
+exec node "$PLUGIN_DIR/bin/memory/gleam@@private_main_v1.15.2.mjs" "$@"
