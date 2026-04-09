@@ -49,8 +49,15 @@ if [ ! -f package.json ]; then
 fi
 npm install --silent
 
+# Also update the cache if the plugin is installed via marketplace
+CACHE_DIR="$HOME/.claude/plugins/cache/local/memory/0.1.0"
+if [ -d "$CACHE_DIR" ]; then
+  echo "Updating plugin cache..."
+  rm -rf "$CACHE_DIR"
+  cp -r "$PLUGIN_DIR" "$CACHE_DIR"
+fi
+
 echo "✓ Plugin installed to $PLUGIN_DIR"
 echo "✓ Wiki directory at $WIKI_DIR"
 echo ""
-echo "Load with: claude --plugin-dir $PLUGIN_DIR"
-echo "Or add as local marketplace: /plugin marketplace add $HOME/.claude/plugins"
+echo "Run /reload-plugins in Claude Code to apply changes."

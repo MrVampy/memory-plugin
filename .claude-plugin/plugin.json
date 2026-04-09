@@ -9,6 +9,5 @@
   "repository": "https://github.com/MrVampy/Memory",
   "license": "MIT",
   "keywords": ["memory", "wiki", "gleam"],
-  "skills": "./skills/",
-  "hooks": "./hooks/hooks.json"
+  "skills": "./skills/"
 }
