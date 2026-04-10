@@ -1,18 +1,28 @@
 ---
 name: create
-description: Read, write, and navigate the typed wiki memory system. Use when you need to store knowledge for future sessions or recall previously stored knowledge.
+description: Save knowledge to persistent memory. Call this whenever you learn or decide something worth keeping for future sessions — user preferences, technical decisions, project context, design rationale. The wiki is agent-driven; nothing gets saved unless you save it.
 argument-hint: "[what to remember]"
 ---
 
 # Memory Wiki
 
-You have access to a persistent, typed wiki for storing and retrieving knowledge across sessions.
+You have access to a persistent, typed wiki for storing and retrieving knowledge across sessions. The wiki is **agent-driven** — there are no automatic save hooks. Nothing enters memory unless you explicitly write it.
+
+## Two operating principles
+
+**1. Always recall before creating.** Before writing a new entry, run `memory recall "<topic keywords>"` to check if a related entry already exists. If it does, *update that entry* (use the same id — `memory create` upserts) rather than creating a duplicate. Run `memory list <namespace>` to browse a topic area.
+
+**2. Save proactively, not reactively.** Don't wait for the user to say "remember this." After completing any task or significant exchange, ask yourself: *did anything come up that I'd want to know in a future session?* If yes, save it. Specifically:
+- Insights or decisions reached
+- Technical findings, how things work, architecture understanding
+- User preferences, feedback, corrections
+- Project context — why something was done a certain way, what was tried and rejected
 
 ## Command
 
 Arguments: $ARGUMENTS
 
-**`/memory <what to remember>`** — Save something specific to the wiki right now. Search existing entries, then create or update the appropriate entry.
+**`/memory <what to remember>`** — Save something specific to the wiki right now. Search existing entries first, then create or update the appropriate entry.
 
 ## Wiki Location
 

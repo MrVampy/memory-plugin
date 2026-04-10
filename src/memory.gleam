@@ -41,8 +41,6 @@ pub fn main() {
     ["list"] -> run_list(default_wiki_path(), None)
     ["list", namespace] -> run_list(default_wiki_path(), Some(namespace))
 
-    ["hook", "recall", ..rest] -> run_hook_recall(rest)
-    ["hook", "validate", ..rest] -> run_hook_validate(rest)
     ["hook", "permission", ..rest] -> run_hook_permission(rest)
 
     ["inbox", ..rest] -> run_inbox(rest)
@@ -59,8 +57,6 @@ fn usage() -> Nil {
   io.println("  memory delete <id> [--force]        Delete an entry, refusing if it would break links")
   io.println("  memory list [namespace]             List entries")
   io.println("  memory inbox <file> [--format X]    Archive a session transcript to ~/.memory/raw/inbox/")
-  io.println("  memory hook recall [--agent X]      Recall hook (reads JSON from stdin)")
-  io.println("  memory hook validate [--agent X]    Validation hook (reserved for future agents)")
   io.println("  memory hook permission [--agent X]  Permission hook (auto-allows wiki writes)")
 }
 
@@ -134,65 +130,6 @@ fn do_recall(query: String, json_mode: Bool) -> Nil {
   }
 }
 
-// --- hook recall ---
-
-/// Read JSON from stdin, dispatch to the recall hook handler for the
-/// given agent (default: claude-code), print the agent's expected
-/// envelope on stdout (or nothing if no matches).
-fn run_hook_recall(args: List(String)) -> Nil {
-  let agent = parse_agent_flag(args)
-  case agent {
-    Error(msg) -> {
-      io.println("✗ " <> msg)
-      exit(1)
-    }
-    Ok(a) -> {
-      case read_stdin() {
-        Error(_) -> Nil
-        Ok(input) -> {
-          let output = hook.run_recall(input, a, default_wiki_path())
-          case output {
-            "" -> Nil
-            _ -> io.println(output)
-          }
-        }
-      }
-    }
-  }
-}
-
-/// Run the stop / validate hook for the given agent. Reads stdin (the
-/// hook protocol requires it), runs the validator with two-pass grace,
-/// and emits the agent's blocking-response envelope on persistent errors.
-fn run_hook_validate(args: List(String)) -> Nil {
-  let agent = parse_agent_flag(args)
-  case agent {
-    Error(msg) -> {
-      io.println("✗ " <> msg)
-      exit(1)
-    }
-    Ok(a) -> {
-      // Consume stdin per hook protocol; we don't actually need it.
-      let _ = read_stdin()
-      let output =
-        hook.run_validate(
-          "",
-          a,
-          default_wiki_path(),
-          default_state_file_path(),
-        )
-      case output {
-        "" -> Nil
-        _ -> io.println(output)
-      }
-    }
-  }
-}
-
-fn default_state_file_path() -> String {
-  memory_home_subpath("/.last_validation_errors")
-}
-
 fn default_raw_path() -> String {
   memory_home_subpath("/raw")
 }
@@ -227,7 +164,6 @@ fn run_hook_permission(args: List(String)) -> Nil {
             hook.run_permission(
               input,
               a,
-              default_wiki_path(),
               default_raw_path(),
               default_processed_path(),
             )

@@ -1,36 +1,50 @@
 ---
 name: recall
-description: Search the wiki for specific knowledge. Use when recalled memory summaries are insufficient, when you need deeper context, or when you want to search for a specific topic.
+description: Search persistent memory for relevant prior knowledge. Call this at the start of any non-trivial task to surface what you already know about the topic. Use whenever the user asks about something that might have been discussed or decided before.
 argument-hint: "[search terms]"
 ---
 
 # Memory Recall
 
-Search the persistent wiki at `~/.memory/wiki/` for knowledge stored in previous sessions.
+You have a persistent typed wiki at `~/.memory/wiki/` containing knowledge from previous sessions — user preferences, technical decisions, project context, design rationale, personal facts about the user. Recall is **agent-driven**: nothing surfaces automatically. You must call recall when you need context.
 
-## Context
+## When to call recall (DO THIS PROACTIVELY)
 
-A recall hook automatically surfaces wiki entry summaries matching the user's message. These appear as `UserPromptSubmit hook additional context` at the start of each turn. This skill is for when those summaries are insufficient and you need more.
+**At the start of any non-trivial task**, before doing other work:
+- The user asks about a topic, project, or decision → recall it first
+- The user mentions a name, technology, or concept → check if there's prior context
+- You're about to make a recommendation → check if a related decision already exists
+- You're starting work in an unfamiliar area → look for namespace coverage
 
-## When to Use
+**The cost of an unnecessary recall is small. The cost of a missed recall is acting on incomplete context.** When in doubt, call it.
 
-- The automatic recall surfaced relevant entries but the summaries lack the detail you need
-- You want to search for a topic not covered by the automatic recall
-- You need to follow links between entries to build a fuller picture
+## How to call
 
-## How to Search
+The fastest path is the CLI:
 
-1. **By tag:** `grep -rl "tags:" ~/.memory/wiki/ | xargs grep -l "keyword"`
-2. **By content:** `grep -rl "keyword" ~/.memory/wiki/`
-3. **By namespace:** `ls ~/.memory/wiki/namespace.*.md`
-4. **By ID:** Read `~/.memory/wiki/<id>.md` directly if you know the entry ID from a recalled summary
+```bash
+memory recall "your search terms here"
+```
 
-## How to Navigate
+This returns the top 5 matching entry summaries (id, title, kind, tags, links). It uses keyword matching, not embeddings — so use distinctive terms from the topic, not generic words like "thing" or "system".
 
-- **Read full entries** — summaries from the recall hook show id, title, tags, and links. Read the full `.md` file for complete content.
-- **Follow links** — entries reference each other via `[[id]]` notation and `links:` in frontmatter. If one entry is relevant, its linked entries likely are too.
-- **Chain searches** — find an entry by keyword, read it, then follow its links to related entries.
+## How to dig deeper
 
-## Arguments
+After `memory recall` surfaces candidate entries:
 
-`$ARGUMENTS` — search terms to grep across wiki entries. If empty, list all available entries with `ls ~/.memory/wiki/*.md`.
+1. **Read the full entry** with the Read tool: `Read ~/.memory/wiki/<id>.md`
+2. **Follow links** in the body (`[[other.id]]`) or frontmatter (`links:`) — related entries are usually as relevant as the matched one
+3. **Browse a namespace** when you want everything in a topic area: `memory list <namespace>` (e.g. `memory list lang.gleam`)
+4. **Search by tag or content** with grep when keyword recall misses: `grep -rl "tag-name" ~/.memory/wiki/`
+
+## What to do with what you find
+
+- Cite the entry id when referencing recalled knowledge so the user knows its source
+- If a recalled entry seems wrong or outdated, *update it* via `memory create` (the create skill explains how) — don't just work around it
+- If two entries cover the same topic with conflicting info, surface the conflict to the user
+
+## What NOT to do
+
+- Don't skip recall because the question seems simple. Simple questions often have prior context you don't have in your weights.
+- Don't only rely on recall hits — also use Read/Glob to explore the wiki when the search misses
+- Don't pretend you "remember" something — recall it explicitly so the user can verify the source

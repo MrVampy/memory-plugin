@@ -71,22 +71,20 @@ if [ -d "$HOME/.claude" ]; then
 fi
 
 # --- Codex adapter ---
-CODEX_HOOKS_FILE="$HOME/.codex/hooks.json"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
 CODEX_CONFIG_FILE="$HOME/.codex/config.toml"
 MEMORY_HOME_PATH="$HOME/.memory"
 if [ -d "$HOME/.codex" ]; then
-  # hooks.json — install if absent, leave alone if already references memory.
-  if [ -f "$CODEX_HOOKS_FILE" ]; then
-    if ! grep -q '"memory hook recall' "$CODEX_HOOKS_FILE" 2>/dev/null; then
-      echo "→ Codex detected — but $CODEX_HOOKS_FILE already exists."
-      echo "  Skipping automatic install. Merge plugins/codex/hooks.json manually."
+  # No hooks.json needed — recall and create are agent-driven via the CLI.
+  # Clean up an obsolete one from a previous install if it only referenced memory.
+  if [ -f "$HOME/.codex/hooks.json" ] && grep -q 'memory hook recall' "$HOME/.codex/hooks.json" 2>/dev/null; then
+    # Count actual hook command invocations (memory hook *), not the literal "command" key.
+    if [ "$(grep -c 'memory hook' "$HOME/.codex/hooks.json")" = "1" ]; then
+      echo "→ Removing obsolete Codex hooks.json (memory recall is now agent-driven)..."
+      rm "$HOME/.codex/hooks.json"
     else
-      echo "→ Codex hooks.json already references memory — leaving alone."
+      echo "→ Codex hooks.json has other entries — leaving alone, but the memory recall hook is no longer needed."
     fi
-  else
-    echo "→ Installing Codex hooks.json..."
-    cp "$SCRIPT_DIR/plugins/codex/hooks.json" "$CODEX_HOOKS_FILE"
   fi
 
   # Skills — install each skill into ~/.codex/skills/memory-<name>/
@@ -151,7 +149,6 @@ echo ""
 echo "✓ memory CLI installed at $BIN_DIR/memory"
 echo "✓ Wiki at $WIKI_DIR"
 [ -d "$CLAUDE_PLUGIN_DIR" ] && echo "✓ Claude Code plugin at $CLAUDE_PLUGIN_DIR"
-[ -f "$CODEX_HOOKS_FILE" ] && grep -q '"memory hook recall' "$CODEX_HOOKS_FILE" 2>/dev/null && echo "✓ Codex hooks at $CODEX_HOOKS_FILE"
 [ -d "$CODEX_SKILLS_DIR/memory-create" ] && echo "✓ Codex skills at $CODEX_SKILLS_DIR/memory-{create,process,recall}"
 [ -f "$CODEX_CONFIG_FILE" ] && grep -qF "$MEMORY_HOME_PATH" "$CODEX_CONFIG_FILE" 2>/dev/null && echo "✓ Codex sandbox writable_roots includes $MEMORY_HOME_PATH"
 [ -f "$OPENCODE_CONFIG_FILE" ] && grep -qF "$OPENCODE_PLUGIN_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null && echo "✓ OpenCode plugin + skills referenced from $OPENCODE_CONFIG_FILE"
