@@ -45,6 +45,7 @@ pub fn parse_file(content: String, file_path: String) -> Result(Entry, String) {
   use id <- result.try(extract(root, "id"))
   use title <- result.try(extract(root, "title"))
   use kind <- result.try(extract(root, "kind"))
+  use tags <- result.try(parse_tags(root))
   use created <- result.try(extract(root, "meta.created"))
   use updated <- result.try(extract(root, "meta.updated"))
   use sources <- result.try(extract_list(root, "meta.sources"))
@@ -54,6 +55,7 @@ pub fn parse_file(content: String, file_path: String) -> Result(Entry, String) {
     id: id,
     title: title,
     kind: kind,
+    tags: tags,
     links: links,
     meta: Meta(created: created, updated: updated, sources: sources),
     body: body,
@@ -71,6 +73,17 @@ fn extract(node: yay.Node, key: String) -> Result(String, String) {
 fn extract_list(node: yay.Node, key: String) -> Result(List(String), String) {
   yay.extract_string_list(node, key)
   |> result.map_error(fn(_) { "missing or invalid '" <> key <> "' field" })
+}
+
+/// Parse the tags array from the YAML root node.
+/// Missing or empty tags key defaults to empty list.
+fn parse_tags(root: yay.Node) -> Result(List(String), String) {
+  case yay.extract_string_list(root, "tags") {
+    Ok(tags) -> Ok(tags)
+    Error(yay.KeyMissing(..)) -> Ok([])
+    Error(yay.KeyValueEmpty(..)) -> Ok([])
+    Error(_) -> Error("invalid 'tags' field")
+  }
 }
 
 /// Parse the links array from the YAML root node.

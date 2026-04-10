@@ -7,7 +7,7 @@ import gleam/string
 import memory/body
 import memory/entry.{
   type Entry, type ValidationError, BrokenLink, DuplicateId, EmptyLabel,
-  LinkMismatch, MissingField,
+  InvalidId, InvalidTag, LinkMismatch, MissingField,
 }
 
 /// Validate a list of entries. Returns a list of all errors found.
@@ -20,6 +20,8 @@ pub fn validate_all(entries: List(Entry)) -> List(ValidationError) {
     check_broken_links(entries, id_set),
     check_empty_labels(entries),
     check_link_consistency(entries),
+    check_tags(entries),
+    check_id_format(entries),
   ])
 }
 
@@ -125,6 +127,43 @@ fn check_link_consistency(entries: List(Entry)) -> List(ValidationError) {
       })
 
     list.flatten([in_body_not_fm, in_fm_not_body])
+  })
+}
+
+/// Check that all tags are valid lowercase slugs.
+fn check_tags(entries: List(Entry)) -> List(ValidationError) {
+  list.flat_map(entries, fn(e) {
+    list.filter_map(e.tags, fn(tag) {
+      let trimmed = string.trim(tag)
+      case string.is_empty(trimmed) {
+        True -> Ok(InvalidTag(entry_id: e.id, tag: tag))
+        False ->
+          case string.contains(trimmed, " ") {
+            True -> Ok(InvalidTag(entry_id: e.id, tag: tag))
+            False -> Error(Nil)
+          }
+      }
+    })
+  })
+}
+
+/// Check that entry IDs use dot-notation namespaces and match filenames.
+fn check_id_format(entries: List(Entry)) -> List(ValidationError) {
+  list.flat_map(entries, fn(e) {
+    let id_errors = case string.contains(e.id, ".") {
+      False ->
+        [InvalidId(entry_id: e.id, reason: "id must use dot-notation namespace (e.g. 'domain.name')")]
+      True -> []
+    }
+
+    let expected_filename = e.id <> ".md"
+    let filename_errors = case e.file_path == expected_filename {
+      True -> []
+      False ->
+        [InvalidId(entry_id: e.id, reason: "id '" <> e.id <> "' does not match filename '" <> e.file_path <> "'")]
+    }
+
+    list.flatten([id_errors, filename_errors])
   })
 }
 

@@ -6,6 +6,7 @@ pub type Entry {
     id: String,
     title: String,
     kind: String,
+    tags: List(String),
     links: List(Link),
     meta: Meta,
     body: String,
@@ -28,6 +29,8 @@ pub type ValidationError {
   LinkMismatch(entry_id: String, reason: String)
   EmptyLabel(entry_id: String, target: String)
   InvalidTimestamp(entry_id: String, field: String, value: String)
+  InvalidTag(entry_id: String, tag: String)
+  InvalidId(entry_id: String, reason: String)
   ParseError(file: String, reason: String)
 }
 
@@ -46,6 +49,10 @@ pub fn format_error(error: ValidationError) -> String {
       id <> ": empty label for link → '" <> target <> "'"
     InvalidTimestamp(id, field, value) ->
       id <> ": invalid timestamp in '" <> field <> "': " <> value
+    InvalidTag(id, tag) ->
+      id <> ": invalid tag '" <> tag <> "' (must be non-empty lowercase slug)"
+    InvalidId(id, reason) ->
+      id <> ": invalid id → " <> reason
     ParseError(file, reason) ->
       file <> ": parse error → " <> reason
   }

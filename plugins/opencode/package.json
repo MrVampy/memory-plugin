@@ -1,0 +1,10 @@
+{
+  "name": "opencode-memory",
+  "version": "0.1.0",
+  "description": "Memory plugin for OpenCode — recall, permission, and capture via the memory CLI",
+  "type": "module",
+  "main": "index.ts",
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  }
+}
