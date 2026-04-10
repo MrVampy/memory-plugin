@@ -38,11 +38,19 @@ fi
 echo "→ Installing memory binary to $BIN_DIR..."
 mkdir -p "$BIN_DIR"
 ln -sf "$SCRIPT_DIR/bin/memory" "$BIN_DIR/memory"
-chmod +x "$SCRIPT_DIR/bin/memory"
+ln -sf "$SCRIPT_DIR/bin/memory-mcp" "$BIN_DIR/memory-mcp"
+chmod +x "$SCRIPT_DIR/bin/memory" "$SCRIPT_DIR/bin/memory-mcp"
 
 if ! echo ":$PATH:" | grep -q ":$BIN_DIR:"; then
   echo "  ⚠  $BIN_DIR is not on PATH. Add this to your shell rc:"
   echo "       export PATH=\"\$HOME/.local/bin:\$PATH\""
+fi
+
+# --- Install MCP server dependencies ---
+
+if [ ! -d "$SCRIPT_DIR/mcp/node_modules" ]; then
+  echo "→ Installing MCP server dependencies..."
+  ( cd "$SCRIPT_DIR/mcp" && npm install --silent )
 fi
 
 # --- 3. Ensure the wiki directory exists -------------------------------------
@@ -60,6 +68,7 @@ if [ -d "$HOME/.claude" ]; then
   mkdir -p "$CLAUDE_PLUGIN_DIR"
   cp -r "$SCRIPT_DIR/plugins/claude-code/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
   cp -r "$SCRIPT_DIR/plugins/claude-code/hooks" "$CLAUDE_PLUGIN_DIR/"
+  cp "$SCRIPT_DIR/plugins/claude-code/.mcp.json" "$CLAUDE_PLUGIN_DIR/.mcp.json"
   # Skills are shared across agents — copy from plugins/skills/
   cp -r "$SCRIPT_DIR/plugins/skills" "$CLAUDE_PLUGIN_DIR/skills"
 
@@ -114,6 +123,19 @@ if [ -d "$HOME/.codex" ]; then
       echo "writable_roots = [\"$MEMORY_HOME_PATH\"]"
     } >> "$CODEX_CONFIG_FILE"
   fi
+
+  # MCP server registration — Codex sees memory as native tools.
+  if [ -f "$CODEX_CONFIG_FILE" ] && grep -q "^\[mcp_servers\.memory\]" "$CODEX_CONFIG_FILE" 2>/dev/null; then
+    echo "→ Codex config.toml already has [mcp_servers.memory] — leaving alone."
+  else
+    echo "→ Registering memory MCP server with Codex..."
+    {
+      echo ""
+      echo "# Added by Memory installer — exposes memory operations as native MCP tools."
+      echo "[mcp_servers.memory]"
+      echo "command = \"memory-mcp\""
+    } >> "$CODEX_CONFIG_FILE"
+  fi
 fi
 
 # --- OpenCode adapter ---
@@ -123,13 +145,23 @@ OPENCODE_PLUGIN_PATH="$SCRIPT_DIR/plugins/opencode/index.ts"
 OPENCODE_SKILLS_PATH="$SCRIPT_DIR/plugins/skills"
 if [ -d "$OPENCODE_CONFIG_DIR" ]; then
   if [ -f "$OPENCODE_CONFIG_FILE" ]; then
-    if grep -qF "$OPENCODE_PLUGIN_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null; then
-      echo "→ OpenCode opencode.json already references memory plugin — leaving alone."
+    has_plugin=false
+    has_mcp=false
+    grep -qF "$OPENCODE_PLUGIN_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null && has_plugin=true
+    grep -q '"memory"[[:space:]]*:[[:space:]]*{' "$OPENCODE_CONFIG_FILE" 2>/dev/null && has_mcp=true
+
+    if $has_plugin && $has_mcp; then
+      echo "→ OpenCode opencode.json already references memory plugin and MCP — leaving alone."
+    elif $has_plugin && ! $has_mcp; then
+      echo "→ OpenCode opencode.json has memory plugin but no MCP server entry."
+      echo "  Add this to your opencode.json's \"mcp\" section:"
+      echo "    \"memory\": { \"type\": \"local\", \"command\": [\"memory-mcp\"] }"
     else
       echo "→ OpenCode detected — but $OPENCODE_CONFIG_FILE already exists."
       echo "  Add this manually to your opencode.json:"
       echo "    \"plugin\": [\"file://$OPENCODE_PLUGIN_PATH\"],"
-      echo "    \"skills\": { \"paths\": [\"$OPENCODE_SKILLS_PATH\"] }"
+      echo "    \"skills\": { \"paths\": [\"$OPENCODE_SKILLS_PATH\"] },"
+      echo "    \"mcp\": { \"memory\": { \"type\": \"local\", \"command\": [\"memory-mcp\"] } }"
     fi
   else
     echo "→ Creating $OPENCODE_CONFIG_FILE..."
@@ -139,6 +171,12 @@ if [ -d "$OPENCODE_CONFIG_DIR" ]; then
   "plugin": ["file://$OPENCODE_PLUGIN_PATH"],
   "skills": {
     "paths": ["$OPENCODE_SKILLS_PATH"]
+  },
+  "mcp": {
+    "memory": {
+      "type": "local",
+      "command": ["memory-mcp"]
+    }
   }
 }
 EOF
@@ -151,6 +189,8 @@ echo "✓ Wiki at $WIKI_DIR"
 [ -d "$CLAUDE_PLUGIN_DIR" ] && echo "✓ Claude Code plugin at $CLAUDE_PLUGIN_DIR"
 [ -d "$CODEX_SKILLS_DIR/memory-create" ] && echo "✓ Codex skills at $CODEX_SKILLS_DIR/memory-{create,process,recall}"
 [ -f "$CODEX_CONFIG_FILE" ] && grep -qF "$MEMORY_HOME_PATH" "$CODEX_CONFIG_FILE" 2>/dev/null && echo "✓ Codex sandbox writable_roots includes $MEMORY_HOME_PATH"
+[ -f "$CODEX_CONFIG_FILE" ] && grep -q "^\[mcp_servers\.memory\]" "$CODEX_CONFIG_FILE" 2>/dev/null && echo "✓ Codex MCP server registered"
 [ -f "$OPENCODE_CONFIG_FILE" ] && grep -qF "$OPENCODE_PLUGIN_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null && echo "✓ OpenCode plugin + skills referenced from $OPENCODE_CONFIG_FILE"
+[ -d "$CLAUDE_PLUGIN_DIR" ] && [ -f "$CLAUDE_PLUGIN_DIR/.mcp.json" ] && echo "✓ Claude Code MCP server registered via .mcp.json"
 echo ""
 echo "If Claude Code is running, use /reload-plugins to apply changes."
