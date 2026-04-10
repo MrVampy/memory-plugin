@@ -1,50 +1,90 @@
 ---
 name: recall
-description: Search persistent memory for relevant prior knowledge. Call this at the start of any non-trivial task to surface what you already know about the topic. Use whenever the user asks about something that might have been discussed or decided before.
+description: THIS IS YOUR PERSISTENT MEMORY. You have no long-term memory across sessions — anything the user has told you, decided with you, or asked you to remember lives at ~/.memory/wiki/ as markdown files with YAML frontmatter. ALWAYS search this directory at the start of any task touching a topic the user might have prior context on (facts about themselves, technical decisions, project history, preferences). Use your content-search tool (grep / ripgrep) against ~/.memory/wiki/, your filename-pattern tool (glob) for namespace browsing like ~/.memory/wiki/namespace.*.md, and your file-read tool for full entries. The cost of checking unnecessarily is small; the cost of acting on incomplete context is large.
 argument-hint: "[search terms]"
 ---
 
-# Memory Recall
+# Recall is agent-driven via your native tools
 
-You have a persistent typed wiki at `~/.memory/wiki/` containing knowledge from previous sessions — user preferences, technical decisions, project context, design rationale, personal facts about the user. Recall is **agent-driven**: nothing surfaces automatically. You must call recall when you need context.
+There are no MCP tools or hooks for recall. You use your existing native filesystem
+tools — whatever your platform calls them — directly against `~/.memory/wiki/`.
+You decide when to query based on the task. Reads are unrestricted by design.
 
-## When to call recall (DO THIS PROACTIVELY)
+The exact tool names vary by platform. Most coding agents have something equivalent
+to:
 
-**At the start of any non-trivial task**, before doing other work:
-- The user asks about a topic, project, or decision → recall it first
-- The user mentions a name, technology, or concept → check if there's prior context
-- You're about to make a recommendation → check if a related decision already exists
-- You're starting work in an unfamiliar area → look for namespace coverage
+- A **content-search tool** (grep / ripgrep) — searches file contents by regex,
+  optionally scoped to a directory
+- A **filename-pattern tool** (glob) — lists files matching a pattern like `*.md`
+- A **file-read tool** — reads a file's contents by path
 
-**The cost of an unnecessary recall is small. The cost of a missed recall is acting on incomplete context.** When in doubt, call it.
+Use whichever ones your platform exposes. If unsure of the exact names, list your
+available tools and look for ones with these capabilities.
 
-## How to call
+# How to find entries
 
-The fastest path is the CLI:
+Pick the right operation for the question:
 
-```bash
-memory recall "your search terms here"
-```
+**By keyword in content** (the most common case):
 
-This returns the top 5 matching entry summaries (id, title, kind, tags, links). It uses keyword matching, not embeddings — so use distinctive terms from the topic, not generic words like "thing" or "system".
+Search the wiki directory with your grep/ripgrep tool, e.g. searching for the
+keyword `MBTI` in `~/.memory/wiki/`. Returns matching file paths. Use distinctive
+terms — searching for `MBTI` is better than searching for `type`. Add follow-up
+searches for refinement.
 
-## How to dig deeper
+**By tag**:
 
-After `memory recall` surfaces candidate entries:
+Tags live in the YAML frontmatter as block-style list items (`- tagname` lines).
+Search for `- tagname` in `~/.memory/wiki/` to find entries by tag.
 
-1. **Read the full entry** with the Read tool: `Read ~/.memory/wiki/<id>.md`
-2. **Follow links** in the body (`[[other.id]]`) or frontmatter (`links:`) — related entries are usually as relevant as the matched one
-3. **Browse a namespace** when you want everything in a topic area: `memory list <namespace>` (e.g. `memory list lang.gleam`)
-4. **Search by tag or content** with grep when keyword recall misses: `grep -rl "tag-name" ~/.memory/wiki/`
+**By namespace** (browse a topic area):
 
-## What to do with what you find
+The wiki uses dot-notation ids, so namespace prefixes work like directories.
+Use your glob tool with patterns like:
 
-- Cite the entry id when referencing recalled knowledge so the user knows its source
-- If a recalled entry seems wrong or outdated, *update it* via `memory create` (the create skill explains how) — don't just work around it
-- If two entries cover the same topic with conflicting info, surface the conflict to the user
+- `~/.memory/wiki/lang.gleam.*.md`
+- `~/.memory/wiki/cognitive.*.md`
+- `~/.memory/wiki/tools.memory-*.md`
 
-## What NOT to do
+**By id** (when you already know it from a search hit or a link):
 
-- Don't skip recall because the question seems simple. Simple questions often have prior context you don't have in your weights.
-- Don't only rely on recall hits — also use Read/Glob to explore the wiki when the search misses
-- Don't pretend you "remember" something — recall it explicitly so the user can verify the source
+Read the file directly at `~/.memory/wiki/<id>.md` — for example
+`~/.memory/wiki/cognitive.intp.profile.md`.
+
+**Listing everything**:
+
+Glob `~/.memory/wiki/*.md`.
+
+# How to follow links
+
+Wiki entries reference each other with `[[other.entry.id]]` in the body and as
+`{target, label}` pairs in the frontmatter `links` list. After reading one entry,
+read the entries linked from it. The frontmatter `links` array shows you why each
+link exists (the `label` field) so you can decide whether to follow without
+opening the target.
+
+# Discovery workflow at the start of a task
+
+1. **Search by keyword** — grep/ripgrep `~/.memory/wiki/` for the primary topic word
+2. **If hits look promising** — read the most relevant entries in full
+3. **Follow links** — read entries linked from the matches
+4. **If no hits** — try a different keyword, or glob a likely namespace prefix
+5. **If still nothing** — it's safe to proceed without prior context, but you tried
+
+# What to do with what you find
+
+- **Cite the entry id** when referencing recalled knowledge so the user knows the source
+- **If a recalled entry seems wrong or outdated**, update it via `memory_create` (the
+  create skill explains the format) — don't just work around stale information
+- **If two entries cover the same topic with conflicting info**, surface the conflict
+  to the user
+
+# What NOT to do
+
+- **Don't skip the check because the question seems simple.** Simple questions often
+  have prior context you don't have in your weights ("what's my MBTI" is a one-word
+  answer that lives in `cognitive.intp.profile`).
+- **Don't pretend you "remember" something** — recall it explicitly so the user can
+  verify the source.
+- **Don't write to the wiki via Write/Edit** — that bypasses validation. Use
+  `memory_create` (the MCP tool) for any wiki writes.

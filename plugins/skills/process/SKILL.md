@@ -16,11 +16,10 @@ The subagent should:
 2. For each file:
    a. Read it. Determine the format (JSONL session transcript, markdown notes, etc.)
    b. Extract knowledge worth keeping — insights, decisions, technical findings, user preferences
-   c. Use `memory list` and Grep on `~/.memory/wiki/` to find existing related entries to update or link to
-   d. Write each new or updated entry to a temp file (e.g. `/tmp/mem-<id>.md`) with the Write tool
-   e. Run `memory create --file /tmp/mem-<id>.md` for each entry. If validation fails, fix the temp file and re-run.
-   f. Delete temp files when done
-   g. Move the source file to `~/.memory/processed/` (preserving subdirectory structure)
+   c. Grep `~/.memory/wiki/` to find existing related entries to update or link to
+   d. Call the `memory_create` MCP tool for each new or updated entry, passing full markdown
+   e. If the tool returns validation errors, fix the markdown and call again
+   f. Move the source file to `~/.memory/processed/` (preserving subdirectory structure)
 3. Report what was processed and what entries were created/updated.
 
 **Important:** Session transcripts can be large. Focus on extracting the *conclusions* — what was decided, learned, or discovered. Skip the back-and-forth debugging, tool call details, and ephemeral task steps.
@@ -68,4 +67,4 @@ relationship naturally occurs in context.
 6. **You decide the content.** The `kind`, section headings, body content, and link labels are yours to determine. The structure is enforced; the content is free.
 7. **Timestamps are ISO 8601 strings.** Always quote them in YAML.
 8. **Sources track provenance.** Add the current session ID to `meta.sources` when creating or updating an entry.
-9. **`memory create` validates on write.** It will reject invalid entries with a list of errors. Fix the temp file and re-run. Never bypass it by writing directly to `~/.memory/wiki/`.
+9. **`memory_create` validates on write.** The MCP tool will reject invalid entries with a list of errors. Fix the markdown and call again. Never bypass it by writing directly to `~/.memory/wiki/`.

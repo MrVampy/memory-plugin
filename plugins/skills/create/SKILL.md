@@ -1,6 +1,6 @@
 ---
 name: create
-description: Save knowledge to persistent memory. Call this whenever you learn or decide something worth keeping for future sessions — user preferences, technical decisions, project context, design rationale. The wiki is agent-driven; nothing gets saved unless you save it.
+description: Save knowledge to persistent memory at ~/.memory/wiki/. Call the memory_create MCP tool whenever you learn or decide something worth keeping for future sessions — user preferences, technical decisions, project context, design rationale. ALWAYS search ~/.memory/wiki/ first (using your grep/ripgrep tool) to find existing related entries — use the same id to update an existing entry rather than creating a duplicate. The wiki is agent-driven; nothing gets saved unless you save it.
 argument-hint: "[what to remember]"
 ---
 
@@ -71,19 +71,14 @@ relationship naturally occurs in context.
 
 ## Workflow
 
-All wiki mutations go through the `memory` CLI. The CLI validates on write
-and rejects invalid entries — there is no separate validation step. Never
-write to `~/.memory/wiki/` directly with the Write or Edit tools.
+All wiki mutations go through the `memory_create` MCP tool, which validates on write
+and rejects invalid entries. Never write to `~/.memory/wiki/` directly with file-write
+tools — that bypasses validation.
 
-1. **Search for existing entries** with `memory list <namespace>` or by reading the recall hook context already injected into your prompt.
-2. **Read full entries** with the Read tool on `~/.memory/wiki/<id>.md` when you need details beyond the recall summary.
-3. **Create or update an entry:**
-   a. Use the Write tool to write the full markdown to a temp file (e.g. `/tmp/mem-<id>.md`)
-   b. Run `memory create --file /tmp/mem-<id>.md`
-   c. If validation fails, fix the temp file and re-run. The CLI prints any errors.
-   d. On success, delete the temp file.
-   `memory create` is an upsert — it creates new entries and replaces existing ones with the same id.
-4. **Delete an entry** with `memory delete <id>`. The CLI refuses if other entries link to it; pass `--force` to override.
+1. **Search for existing entries** by grepping `~/.memory/wiki/` for the topic, or by globbing `~/.memory/wiki/namespace.*.md` to browse a topic area. See the recall skill for full discovery patterns.
+2. **Read full entries** with your file-read tool on `~/.memory/wiki/<id>.md` when you need to update one.
+3. **Create or update an entry:** call the `memory_create` MCP tool with the full markdown as the `markdown` argument. It validates and writes in one call. If validation fails, the tool returns the errors — fix the markdown and call again. `memory_create` is an upsert: same id replaces the existing entry.
+4. **Delete an entry** with the `memory_delete` MCP tool. It refuses if other entries link to it; pass `force=true` to override.
 
 ## What Goes Where
 
@@ -92,7 +87,7 @@ write to `~/.memory/wiki/` directly with the Write or Edit tools.
 
 ## Navigation
 
-Search the wiki using Grep and Glob — the structured frontmatter (tags, IDs, links) is designed for this. Use `grep -rl "tags:.*term"` to find entries by tag, `ls wiki/namespace.*.md` to browse a namespace, or `grep -rl "term"` for full-text search. Follow `[[links]]` to traverse related knowledge.
+See the recall skill for the full discovery patterns. Short version: grep `~/.memory/wiki/` for content keywords, glob `~/.memory/wiki/namespace.*.md` to browse a namespace, read `~/.memory/wiki/<id>.md` for full entries. Follow `[[id]]` references in entry bodies to traverse related knowledge.
 
 ## Automatic Memory (IMPORTANT)
 
@@ -129,20 +124,16 @@ Use the `subagents` mechanism (`/subagents` slash command) and dispatch the task
 **Briefing for the subagent:**
 - Full context of what knowledge to save
 - The entry format rules from this skill (frontmatter shape, link rules, ID convention)
-- Instructions to: (1) write each entry to a temp file with the Write tool, (2) run `memory create --file /tmp/mem-<id>.md` for each, (3) fix and re-run if validation fails, (4) delete temp files when done
-- Tell it to use `memory list` and Grep on `~/.memory/wiki/` to find existing related entries to link to
+- Instructions to: (1) call `memory_create` MCP tool for each entry with full markdown, (2) if it returns validation errors, fix the markdown and call again
+- Tell it to grep `~/.memory/wiki/` first (with whatever search tool the platform provides) to find existing related entries to link to or update
 
-`memory create` validates entries at write time and rejects invalid ones, so there is no separate validation step.
+The `memory_create` tool validates entries at write time and rejects invalid ones, so there is no separate validation step.
 
 ## Archiving full transcripts (optional)
 
-Proactive saves via `memory create` are the primary path. But if a conversation has been long and dense and you suspect you may not have captured every useful insight in real time, you can also archive the full session transcript for later batch processing:
+Proactive saves via `memory_create` are the primary path. But if a conversation has been long and dense and you suspect you may not have captured every useful insight in real time, you can also archive the full session transcript for later batch processing by calling the `memory_inbox` MCP tool with the transcript path.
 
-```bash
-memory inbox <path-to-current-transcript>
-```
-
-The CLI auto-detects the format (Claude Code or Codex). The filtered transcript lands in `~/.memory/raw/inbox/` and can be processed later via the `memory:process` skill — which extracts wiki-worthy knowledge that the live `memory create` calls might have missed.
+The tool auto-detects the format (Claude Code or Codex). The filtered transcript lands in `~/.memory/raw/inbox/` and can be processed later via the `memory:process` skill — which extracts wiki-worthy knowledge that the live `memory_create` calls might have missed.
 
 This is opt-in. Use it when:
 - The conversation covered many topics and you can't be sure you saved all of them

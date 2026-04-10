@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 /**
- * memory-mcp — MCP server exposing the memory CLI as native tools.
+ * memory-mcp — MCP server exposing the memory CLI's write operations as tools.
  *
- * Wraps the existing `memory` binary so coding agents (Claude Code,
- * Codex, OpenCode) see typed tool definitions in their tool list
- * instead of needing to remember a shell command. Each tool shells
- * out to `memory` under the hood — no business logic lives here.
+ * Reads (recall, list, read full entries) are NOT exposed here. They go
+ * through the agent's native Read/Glob/Grep tools against `~/.memory/wiki/`,
+ * with the recall skill description teaching the patterns. The grep/glob
+ * approach has fewer composition steps than an MCP read tool would, and
+ * native tools are always in the agent's tool list with their own schemas.
+ *
+ * Writes still need MCP because:
+ *   1. Native Write/Edit bypass our type validator
+ *   2. memory_create wraps validate-on-write in a named tool
+ *   3. The alternative (Bash → CLI) has the composition friction that
+ *      was the failure mode of the lean experiment
  *
  * Tools exposed:
- *   memory_recall(query)         — keyword search, returns top matches
- *   memory_list(namespace?)      — list entries
- *   memory_read(id)              — read a full entry by id
- *   memory_create(markdown)      — upsert an entry (validates on write)
- *   memory_delete(id, force?)    — delete with cross-entry validation
- *   memory_inbox(transcript_path) — archive a transcript for later processing
+ *   memory_create(markdown)         — upsert with validate-on-write
+ *   memory_delete(id, force?)       — delete with cross-entry validation
+ *   memory_inbox(transcript_path)   — archive a transcript for later processing
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js"
@@ -22,15 +26,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js"
-import { execFileSync, spawnSync } from "node:child_process"
-import { readFileSync } from "node:fs"
-import { homedir } from "node:os"
-import { join } from "node:path"
+import { spawnSync } from "node:child_process"
 
 const MEMORY_BIN = process.env.MEMORY_BIN || "memory"
-const WIKI_DIR = process.env.MEMORY_HOME
-  ? join(process.env.MEMORY_HOME, "wiki")
-  : join(homedir(), ".memory", "wiki")
 
 const server = new Server(
   { name: "memory", version: "0.1.0" },
@@ -41,61 +39,16 @@ const server = new Server(
 
 const TOOLS = [
   {
-    name: "memory_recall",
-    description:
-      "Search persistent memory for entries matching the query keywords. Returns the top 5 matching wiki entries with id, title, kind, tags, and links. CALL THIS at the start of any non-trivial task — the cost of an unnecessary recall is small, the cost of acting without context is large. Use distinctive keywords from the topic, not generic words.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "Search keywords. Distinctive terms work best.",
-        },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "memory_list",
-    description:
-      "List all wiki entries, optionally filtered by namespace prefix (e.g. 'lang.gleam' lists everything under lang.gleam.*). Returns id and title for each entry. Use this to browse a topic area when you don't have specific keywords.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        namespace: {
-          type: "string",
-          description:
-            "Optional namespace prefix to filter by (e.g. 'cognitive', 'lang.gleam', 'tools.memory').",
-        },
-      },
-    },
-  },
-  {
-    name: "memory_read",
-    description:
-      "Read the full content of a wiki entry by id. Use this after memory_recall or memory_list when you need the body of an entry, not just the summary.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-          description: "The entry id (e.g. 'cognitive.intp.profile').",
-        },
-      },
-      required: ["id"],
-    },
-  },
-  {
     name: "memory_create",
     description:
-      "Create or update a wiki entry. Pass the full markdown including YAML frontmatter. The entry is validated on write — if frontmatter is malformed, links are broken, or tags are invalid, the call returns errors and nothing is written. This is an upsert: if an entry with the same id exists, it is replaced. CALL THIS proactively whenever you learn something worth keeping — user preferences, technical decisions, project context, design rationale.",
+      "Create or update a wiki entry in the user's persistent memory at ~/.memory/wiki/. Pass the full markdown including YAML frontmatter (id, title, kind, tags, links, meta). The entry is validated on write — if frontmatter is malformed, links are broken, or tags use flow-style instead of block-style, the call returns errors and nothing is written. This is an upsert: if an entry with the same id exists, it is replaced. CALL THIS PROACTIVELY whenever you learn or decide something worth keeping for future sessions: user preferences, technical decisions, project context, design rationale, personal facts. Always read existing related entries first (via Grep on ~/.memory/wiki/) so you can update an existing entry rather than create a duplicate.",
     inputSchema: {
       type: "object",
       properties: {
         markdown: {
           type: "string",
           description:
-            "Full entry markdown including YAML frontmatter with id, title, kind, tags (block-style list), links, and meta (created/updated/sources). See an existing entry via memory_read for the format.",
+            "Full entry markdown including YAML frontmatter. Required fields: id (dot-notation, must match filename), title, kind, tags (block-style YAML list, NOT flow-style [a, b]), links (each with target and label), meta.created, meta.updated, meta.sources. Body must contain [[id]] inline references matching every frontmatter link target.",
         },
       },
       required: ["markdown"],
@@ -104,11 +57,14 @@ const TOOLS = [
   {
     name: "memory_delete",
     description:
-      "Delete a wiki entry by id. The CLI validates the post-delete state and refuses if removing this entry would break links from other entries. Pass force=true to override.",
+      "Delete a wiki entry by id from ~/.memory/wiki/. The CLI validates the post-delete state and refuses if removing this entry would break links from other entries. Pass force=true to override.",
     inputSchema: {
       type: "object",
       properties: {
-        id: { type: "string", description: "The entry id to delete." },
+        id: {
+          type: "string",
+          description: "The entry id to delete (e.g. 'cognitive.intp.profile').",
+        },
         force: {
           type: "boolean",
           description:
@@ -121,7 +77,7 @@ const TOOLS = [
   {
     name: "memory_inbox",
     description:
-      "Archive a session transcript file into ~/.memory/raw/inbox/ for later processing by the memory:process skill. Format (Claude Code or Codex JSONL) is auto-detected. Use this at the end of substantial conversations as a fallback when proactive memory_create may have missed something.",
+      "Archive a session transcript file into ~/.memory/raw/inbox/ for later processing by the memory:process skill. Format (Claude Code or Codex JSONL) is auto-detected. Use this at the end of substantial conversations as a fallback when proactive memory_create may have missed something — it is NOT the primary path. The primary path is calling memory_create live during the conversation.",
     inputSchema: {
       type: "object",
       properties: {
@@ -144,25 +100,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params
   try {
     switch (name) {
-      case "memory_recall":
-        return ok(callMemory(["recall", args.query]))
-
-      case "memory_list":
-        return ok(
-          args.namespace
-            ? callMemory(["list", args.namespace])
-            : callMemory(["list"]),
-        )
-
-      case "memory_read": {
-        const path = join(WIKI_DIR, `${args.id}.md`)
-        try {
-          return ok(readFileSync(path, "utf8"))
-        } catch {
-          return err(`entry not found: ${args.id}`)
-        }
-      }
-
       case "memory_create":
         return runWithStdin(["create"], args.markdown)
 
@@ -185,10 +122,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 })
 
 // --- helpers ---
-
-function callMemory(args) {
-  return execFileSync(MEMORY_BIN, args, { encoding: "utf8" })
-}
 
 function runWithStdin(args, stdin) {
   const r = spawnSync(MEMORY_BIN, args, { input: stdin, encoding: "utf8" })

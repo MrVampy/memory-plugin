@@ -2,10 +2,15 @@
 ///
 /// Commands:
 ///   validate [path]              Validate all wiki entries at path
-///   recall <query> [--json]      Find entries matching query keywords
 ///   create [--file path]         Validate and write a new entry (markdown on stdin)
-///   list [namespace]             List all entries, optionally filtered by namespace
-///   hook recall [--agent X]      Run the recall hook (reads JSON from stdin)
+///   delete <id> [--force]        Delete an entry, refusing if it would break links
+///   list [namespace]             List entries, optionally filtered by namespace
+///   inbox <file> [--format X]    Archive a session transcript to ~/.memory/raw/inbox/
+///   hook permission [--agent X]  Permission hook (auto-allows raw→processed mv)
+///
+/// Reads (recall, browsing) are NOT exposed as CLI commands. Agents use
+/// native Read/Glob/Grep against ~/.memory/wiki/ directly. The recall
+/// skill description teaches the patterns.
 
 import argv
 import gleam/int
@@ -20,7 +25,6 @@ import memory/entry.{
 import memory/frontmatter
 import memory/hook
 import memory/inbox
-import memory/recall
 import memory/store
 import memory/validate
 import simplifile
@@ -29,8 +33,6 @@ pub fn main() {
   case argv.load().arguments {
     ["validate", path] -> run_validate(path)
     ["validate"] -> run_validate(default_wiki_path())
-
-    ["recall", ..rest] -> run_recall(rest)
 
     ["create", ..rest] -> run_create(rest)
 
@@ -52,12 +54,11 @@ pub fn main() {
 fn usage() -> Nil {
   io.println("Usage:")
   io.println("  memory validate [path]              Validate wiki entries")
-  io.println("  memory recall <query> [--json]      Find matching entries")
   io.println("  memory create [--file path]         Create or update an entry (markdown on stdin)")
   io.println("  memory delete <id> [--force]        Delete an entry, refusing if it would break links")
   io.println("  memory list [namespace]             List entries")
   io.println("  memory inbox <file> [--format X]    Archive a session transcript to ~/.memory/raw/inbox/")
-  io.println("  memory hook permission [--agent X]  Permission hook (auto-allows wiki writes)")
+  io.println("  memory hook permission [--agent X]  Permission hook (auto-allows raw→processed mv)")
 }
 
 // --- validate ---
@@ -83,47 +84,6 @@ fn run_validate(path: String) -> Nil {
           list.each(errors, fn(e) { io.println("✗ " <> entry.format_error(e)) })
           io.println(int.to_string(list.length(errors)) <> " error(s)")
           exit(1)
-        }
-      }
-    }
-  }
-}
-
-// --- recall ---
-
-fn run_recall(args: List(String)) -> Nil {
-  let json_mode = list.contains(args, "--json")
-  let query =
-    args
-    |> list.filter(fn(a) { a != "--json" })
-    |> string.join(" ")
-
-  case string.trim(query) {
-    "" -> Nil
-    _ -> do_recall(query, json_mode)
-  }
-}
-
-fn do_recall(query: String, json_mode: Bool) -> Nil {
-  let keywords = recall.extract_keywords(query)
-  case keywords {
-    [] -> Nil
-    _ -> {
-      case store.read_wiki(default_wiki_path()) {
-        Error(_) -> Nil
-        Ok(results) -> {
-          let #(entries, _) = store.partition_results(results)
-          let matches = recall.top_matches(entries, keywords, 5)
-          case matches {
-            [] -> Nil
-            _ -> {
-              let output = recall.format_output(matches)
-              case json_mode {
-                True -> io.println(recall.format_json(output))
-                False -> io.println(output)
-              }
-            }
-          }
         }
       }
     }
