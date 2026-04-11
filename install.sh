@@ -56,6 +56,32 @@ WIKI_DIR="${MEMORY_HOME:-$HOME/.memory}/wiki"
 BIN_DIR="$HOME/.local/bin"
 NODE_DEPS_DIR="$SCRIPT_DIR/build/dev/javascript"
 
+# --- Prerequisites -----------------------------------------------------------
+#
+# Check required tools up front so the user gets a clear error instead of
+# a cryptic build failure halfway through.
+
+check_command() {
+  local cmd="$1"
+  local purpose="$2"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "✗ Missing required command: $cmd" >&2
+    echo "  Needed for: $purpose" >&2
+    return 1
+  fi
+}
+
+MISSING=0
+check_command gleam   "building the validator (gleam build --target javascript)" || MISSING=1
+check_command node    "running the compiled JS validator" || MISSING=1
+check_command npm     "installing js-yaml, the yay YAML library's runtime dep" || MISSING=1
+check_command python3 "maintain skill scripts + install.sh cron state management" || MISSING=1
+if [ $MISSING -ne 0 ]; then
+  echo "" >&2
+  echo "Install the missing prerequisites and re-run bash install.sh" >&2
+  exit 1
+fi
+
 # --- 1. Build the Gleam project ----------------------------------------------
 
 echo "→ Building Gleam validator..."
@@ -257,8 +283,30 @@ echo "✓ Wiki at $WIKI_DIR"
 [ -f "$OPENCODE_CONFIG_FILE" ] && grep -qF "$OPENCODE_SKILLS_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null && echo "✓ OpenCode skills path set in $OPENCODE_CONFIG_FILE"
 [ -n "$CRON_PROJECT" ] && [ -f "$CRON_FILE" ] && echo "✓ Hourly maintenance cron registered in $CRON_FILE"
 echo ""
-echo "If Claude Code is running, use /reload-plugins to apply changes."
+
+# --- Final verification: run the validator ----------------------------------
+#
+# Smoke test — if the validator runs and reports a clean wiki, the install is
+# functional. A fresh install with an empty wiki will report "0 entries, 0 errors".
+
+echo "→ Verifying install..."
+if VALIDATE_OUT="$("$SCRIPT_DIR/bin/memory" validate 2>&1)"; then
+  echo "  $VALIDATE_OUT"
+  echo ""
+  echo "✓ Install complete."
+else
+  echo "✗ Validator smoke test failed:" >&2
+  echo "$VALIDATE_OUT" >&2
+  echo "" >&2
+  echo "The install finished but the validator isn't working. Check the error" >&2
+  echo "above and try 'memory validate' manually to debug." >&2
+  exit 1
+fi
+
 if [ -n "$CRON_PROJECT" ]; then
+  echo ""
   echo "The cron only fires when Claude Code is running in $CRON_PROJECT_ABS."
   echo "Open (or restart) Claude Code there to start the scheduler."
 fi
+echo ""
+echo "If Claude Code is already running, use /reload-plugins to pick up the new skills."
