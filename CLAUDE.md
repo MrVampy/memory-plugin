@@ -1,46 +1,88 @@
-# Memory — Typed Wiki for Claude Code
+# Memory — project guide for coding agents
 
-A Gleam-based memory system for Claude Code sessions, built on the Karpathy wiki pattern:
-LLM incrementally builds and maintains a persistent wiki rather than re-deriving knowledge via RAG.
+A persistent, typed wiki shared across Claude Code, Codex, and OpenCode. The user interacts with the wiki via three skills (`recall`, `create`, `maintain`); the project ships one CLI (`memory validate`) that enforces structural consistency.
 
-## Architecture
+This file is the project-level context for coding agents working on the repo itself. For the user-facing overview, see [README.md](./README.md).
 
-- **Raw layer**: Session JSONL transcripts (already captured by Claude Code)
-- **Wiki layer**: Structured markdown entries with typed frontmatter, validated by Gleam tools
-- **Index**: Auto-generated directory of all entries for context injection at session start
-- **MCP server**: Gleam → JS, exposes wiki read/search/write to Claude Code
+## Architecture in one sentence
 
-## Design Principles
+**One tool (validator), three skills (recall/create/maintain), everything else native** — the agent uses Read/Edit/Write/Bash-rm/Grep/Glob directly against `~/.memory/wiki/`, with `memory validate` as the single gate that keeps the wiki structurally consistent.
 
-- **Type the structure, not the content**: Gleam enforces entry shape (id, title, kind, links, meta). The LLM decides what kind an entry is, what sections it has, and how to describe relationships.
-- **Validate on write, not after**: The Gleam write tool rejects invalid entries. No linter needed — invalid state never hits disk.
-- **Links are inline**: `[[entry-id]]` appears in prose where the relationship naturally occurs. Frontmatter links list is the authoritative index with labels for traversal.
-- **Frontmatter/body link consistency**: Every `[[ref]]` in body must appear in frontmatter links, and vice versa.
+## What the validator enforces
 
-## Tech Stack
+The Gleam validator (`src/memory/validate.gleam`) rejects entries that violate any of these. Don't weaken these rules casually — they're the only thing keeping the wiki graph coherent:
 
-- **Gleam → JS**: MCP server, hooks, validation tools
-- **Gleam → Erlang**: Future BEAM deployment on Nucbox
-- **Format**: Markdown with YAML frontmatter, validated by Gleam types
+1. Required top-level fields: `id`, `title`, `kind`, `tags`, `links`, `meta`
+2. `id` must contain at least one dot (dot-notation namespace)
+3. `id` must match the filename (`<id>.md`)
+4. `tags` must parse as a block-style YAML list (flow-style `[a, b]` is rejected)
+5. Tags must be non-empty strings without spaces
+6. Bidirectional link integrity: every `[[ref]]` in body has a matching `links` entry, and every `links[].target` has a matching `[[ref]]` in body
+7. Link targets must resolve to existing entries
+8. Every link has a non-empty `label`
+9. Required meta fields: `meta.created`, `meta.updated`, `meta.sources` (list)
+10. Timestamps are quoted ISO 8601 strings
 
-## Entry Format
+**Everything else is free.** The validator does not care about title wording, `kind` value (any non-empty string), namespace choice, body structure, or tag meaning. Those are the creator's call. Do not add rules for content; add rules only for structure.
 
-```markdown
----
-id: entry-id
-title: Human readable title
-kind: whatever-the-llm-decides
-links:
-  - target: other-entry-id
-    label: why this entry relates to that one
-meta:
-  created: 2026-04-09T02:30:00
-  updated: 2026-04-09T02:30:00
-  sources:
-    - session-id
----
+## What each skill is for
 
-# Section Heading
+- **`plugins/skills/recall/`** — *live, agent-driven discovery.* The agent searches `~/.memory/wiki/` with native Read/Grep/Glob when the current task needs prior context. No hooks, no auto-injection. The skill description (always in the system reminder) is the trigger.
 
-Body text with [[other-entry-id]] inline references...
+- **`plugins/skills/create/`** — *live, explicit-only writes.* The agent writes to the wiki **only** when the user directly asks ("remember that X", "update the entry about Y", "delete the memory about Z"). Uses native Write/Edit/Bash-rm + `memory validate` as the gate. Does not save proactively — proactive capture is the maintain skill's job.
+
+- **`plugins/skills/maintain/`** — *scheduled, background subagent.* Fires hourly via Claude Code's durable cron. Walks session transcripts from all three agents, extracts knowledge into the wiki, runs maintenance passes. SKILL.md is the dispatcher (run by the main agent to spawn a background subagent); `references/workflow.md` is the runbook (read by the subagent).
+
+## Repo layout
+
 ```
+Memory/
+├── bin/memory                      # CLI launcher (bash, resolves symlinks)
+├── src/memory.gleam                # Validator CLI (~75 lines, just dispatch)
+├── src/memory/                     # Gleam modules: validate, store, frontmatter, entry, body
+├── src/ffi/env.mjs                 # Tiny JS FFI for env + process.exit
+├── plugins/
+│   ├── claude-code/.claude-plugin/ # Plugin manifest (identity + skills pointer)
+│   ├── codex/README.md             # Codex-specific notes (no code)
+│   ├── opencode/README.md          # OpenCode-specific notes (no code)
+│   └── skills/                     # Shared across all three agents
+│       ├── recall/SKILL.md
+│       ├── create/SKILL.md
+│       └── maintain/
+│           ├── SKILL.md            # Dispatcher (main agent runs this)
+│           ├── scripts/            # Mechanical work (discover, filter, process)
+│           └── references/         # Runbook + entry format + formats + passes
+├── install.sh                      # Build + install per detected agent
+├── gleam.toml                      # Gleam project
+└── test/                           # Gleam tests
+```
+
+## Working on this repo
+
+**Default to editing skills, not Gleam.** The validator is deliberately small and should stay that way. Most changes — how the wiki gets populated, what counts as a maintenance pass, what the create workflow looks like — are skill-level concerns. Edit SKILL.md files and scripts.
+
+**When touching the validator**, the rule is: add structural rules, never content rules. "Tags must be non-empty" is structural. "Tags must be lowercase" would be content-level and was deliberately not enforced.
+
+**When touching install.sh**, don't add migration code. The installer should be oriented toward fresh installs. If you need to migrate legacy state from a previous version of the plugin, do it in a separate one-shot script, not inside `install.sh`.
+
+**When touching skill docs**, don't impose content conventions. The docs describe structure (what the validator enforces) and mechanics (how to use the scripts and tools). What the agent saves, what kind it uses, what namespace it picks — those are the agent's call at runtime.
+
+## Running locally
+
+Prerequisites: `gleam`, `node`, `npm`, `python3`, `bash`.
+
+```bash
+bash install.sh [--cron-project PATH]
+```
+
+The installer builds the Gleam project, symlinks `bin/memory` to `~/.local/bin/memory`, creates `~/.memory/wiki/`, copies skills into each detected agent's skill directory, and (optionally) registers the maintenance cron in the specified project's `.claude/scheduled_tasks.json`.
+
+After install:
+
+```bash
+memory validate   # smoke test — should print "✓ N entries, 0 errors"
+```
+
+## The wiki is user state
+
+`~/.memory/wiki/` (or `$MEMORY_HOME/wiki/`) contains the user's personal knowledge. It is **not** part of this repo. Don't commit it, don't read it looking for what the code does — read the source. The wiki is per-user, per-machine state that the code produces, like a database file.

@@ -115,14 +115,6 @@ CODEX_CONFIG_FILE="$HOME/.codex/config.toml"
 MEMORY_HOME_PATH="${MEMORY_HOME:-$HOME/.memory}"
 
 if [ -d "$HOME/.codex" ]; then
-  # Clean up an obsolete hooks.json from a previous install.
-  if [ -f "$HOME/.codex/hooks.json" ] && grep -q 'memory hook' "$HOME/.codex/hooks.json" 2>/dev/null; then
-    if [ "$(grep -c 'memory hook' "$HOME/.codex/hooks.json")" = "1" ]; then
-      echo "→ Removing obsolete Codex hooks.json..."
-      rm "$HOME/.codex/hooks.json"
-    fi
-  fi
-
   echo "→ Installing Codex skills..."
   mkdir -p "$CODEX_SKILLS_DIR"
   for skill in create recall; do
@@ -155,11 +147,6 @@ if [ -d "$HOME/.codex" ]; then
     } >> "$CODEX_CONFIG_FILE"
   fi
 
-  # Clean up obsolete [mcp_servers.memory] from a previous install.
-  if [ -f "$CODEX_CONFIG_FILE" ] && grep -q "^\[mcp_servers\.memory\]" "$CODEX_CONFIG_FILE" 2>/dev/null; then
-    echo "  ⚠  Codex config.toml still has [mcp_servers.memory] from a previous install."
-    echo "     You can safely remove that section — the memory system no longer uses MCP."
-  fi
 fi
 
 # --- OpenCode ---
@@ -175,8 +162,6 @@ if [ -d "$OPENCODE_CONFIG_DIR" ]; then
       echo "→ OpenCode opencode.json exists but doesn't reference the skills path."
       echo "  Add this manually to opencode.json:"
       echo "    \"skills\": { \"paths\": [\"$OPENCODE_SKILLS_PATH\"] }"
-      echo "  And if you had a previous \"plugin\" or \"mcp\" entry pointing at memory,"
-      echo "  remove it — the memory system no longer ships a plugin or MCP server."
     fi
   else
     echo "→ Creating $OPENCODE_CONFIG_FILE..."

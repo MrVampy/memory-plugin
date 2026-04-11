@@ -1,31 +1,30 @@
 #!/bin/bash
 # memory CLI launcher.
-# Resolves the install location and runs the compiled Gleam JS bundle.
-# Set MEMORY_HOME to override the default install path.
+#
+# Finds its own install location by following symlinks, then runs the
+# compiled Gleam JS bundle from there.
+#
+# Note: MEMORY_HOME is the wiki directory (used by the `memory validate`
+# command to locate the wiki), NOT the launcher's install location. The
+# launcher's location is always resolved via symlink walk — do not
+# conflate the two.
 
 set -e
 
-if [ -n "$MEMORY_HOME" ]; then
-  ROOT="$MEMORY_HOME"
-else
-  # Follow symlinks to find the real script location
-  SOURCE="${BASH_SOURCE[0]}"
-  while [ -L "$SOURCE" ]; do
-    DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
-    SOURCE="$(readlink "$SOURCE")"
-    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
-  done
-  ROOT="$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)"
-fi
+# Follow symlinks to find the real script location.
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+ROOT="$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)"
 
 ENTRY="$ROOT/build/dev/javascript/memory/gleam@@private_main_v1.15.2.mjs"
-if [ ! -f "$ENTRY" ]; then
-  # Try the lib/ layout used when installed into a plugin directory
-  ENTRY="$ROOT/lib/memory/gleam@@private_main_v1.15.2.mjs"
-fi
 
 if [ ! -f "$ENTRY" ]; then
-  echo "memory: cannot find compiled JS bundle. Run install.sh." >&2
+  echo "memory: cannot find compiled JS bundle at $ENTRY" >&2
+  echo "memory: run install.sh to build the project" >&2
   exit 1
 fi
 
