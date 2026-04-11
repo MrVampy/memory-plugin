@@ -79,15 +79,35 @@ Read the transcript and decide what (if anything) is worth turning into wiki ent
 - Tags in flow style `[a, b]` instead of block style
 - ID doesn't match filename
 
-### Step 3d: Move the processed transcript
+### Step 3d: Always mark the transcript as done
 
-After all knowledge is extracted and validated:
+**Always move the file out of `raw/sessions/`, regardless of whether you extracted anything.** The presence of a file in `processed/sessions/` is what marks the transcript as "seen" — not "had content worth saving." If you leave a staged transcript in `raw/sessions/` because "nothing to extract," the next run will re-filter and re-read it forever.
+
+Two cases:
+
+**Case A — you extracted knowledge and wrote/updated entries:**
 
 ```bash
 mv ~/.memory/raw/sessions/<id> ~/.memory/processed/sessions/<id>
 ```
 
-The presence of the file in `processed/` is what tells the next run "this is done."
+**Case B — you read the transcript and decided nothing was worth extracting:**
+
+Same move. The file's content doesn't matter after this point — only its presence in `processed/sessions/` does. Move it anyway:
+
+```bash
+mv ~/.memory/raw/sessions/<id> ~/.memory/processed/sessions/<id>
+```
+
+**Case C — the filter in Phase 2 produced an empty file and `process-file.sh` deleted it:**
+
+There's no file in `raw/sessions/` to move. Create a zero-byte marker directly:
+
+```bash
+touch ~/.memory/processed/sessions/<id>
+```
+
+In all three cases, after this step, `find-new-transcripts.sh` will skip this transcript on future runs.
 
 ## Phase 4: Maintenance passes (on longer cycles)
 
