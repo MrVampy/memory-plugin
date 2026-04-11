@@ -237,12 +237,11 @@ updated = {
     "id": "memory-maintenance",
     "cron": "0 * * * *",
     "prompt": (
-        "Scheduled memory maintenance. Using the Agent tool, spawn a background "
-        "subagent with description='Memory maintenance', model='sonnet', "
-        "run_in_background=true, and prompt='Invoke the memory:maintain skill "
-        "and follow its runbook at references/workflow.md. Work silently and "
-        "print only a final summary.'. Do not wait for the subagent; return "
-        "immediately to whatever the user was doing."
+        "Scheduled hourly memory maintenance. Invoke the memory:maintain "
+        "skill — it will dispatch the work to a background subagent. You "
+        "should not do maintenance work yourself in this session. Follow "
+        "the skill's dispatcher instructions and return to the user's "
+        "work immediately."
     ),
     "createdAt": existing.get("createdAt") if existing else int(time.time() * 1000),
     "recurring": True,

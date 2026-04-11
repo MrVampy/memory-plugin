@@ -1,54 +1,46 @@
 ---
 name: maintain
-description: Memory maintenance subagent. Scheduled background agent that walks session transcripts from Claude Code, Codex, and OpenCode, extracts knowledge into the shared wiki at ~/.memory/wiki/, and runs semantic maintenance passes. This skill runs in a scheduled subagent, NOT in user-facing conversations — work silently and report only a final summary. Start by reading references/workflow.md.
+description: Memory maintenance trigger. Invoke this when the user asks to "run memory maintenance", "maintain memory", "process session transcripts", "update the wiki from recent sessions", or similar — AND when the scheduled hourly cron fires. Both paths converge here. Your job as the agent handling the trigger is to SPAWN A BACKGROUND SUBAGENT that does the actual work; you do NOT do maintenance work in the current session. The subagent walks session transcripts from Claude Code, Codex, and OpenCode, extracts knowledge into the wiki at ~/.memory/wiki/, and runs semantic maintenance passes. Spawn it, then return to whatever the user was doing.
 ---
 
-# Memory maintenance
+# Memory maintenance dispatcher
 
-You are running as a scheduled background subagent. Your job is to process new session transcripts from all three coding agents into the shared wiki at `~/.memory/wiki/` and keep it clean. You are **not** in a user-facing conversation — work silently, print only the final summary.
+When this skill is invoked — either because the user asked for maintenance, or because the hourly cron fired a prompt — **you are the dispatcher, not the executor**. Your only job is to spawn a background subagent and return immediately. Do not read transcripts, do not touch the wiki, do not do any maintenance work yourself in this session.
 
-## Start here
+## What to do
 
-**Read `references/workflow.md` for the full runbook.** Short version:
+Use the Agent tool to spawn a background subagent with these exact parameters:
 
-1. Run `scripts/find-new-transcripts.sh` → list of unprocessed transcripts
-2. For each: `scripts/process-file.sh <agent> <id> <source>` filters and stages it at `~/.memory/raw/sessions/<id>`
-3. Read each staged transcript, extract knowledge, write wiki entries via Write + `scripts/validate.sh`
-4. Move each processed transcript from `~/.memory/raw/sessions/` to `~/.memory/processed/sessions/`
-5. If >24h since last maintenance pass, read `references/maintenance-passes.md` and run the passes
-6. Print a concise summary of what changed
+```
+Agent({
+  description: "Memory maintenance",
+  model: "sonnet",
+  run_in_background: true,
+  prompt: "You are the memory maintenance subagent. Your working context is the memory maintenance skill at ~/.claude/plugins/memory/skills/maintain/. Read ~/.claude/plugins/memory/skills/maintain/references/workflow.md and follow the runbook exactly. All scripts it references are at ~/.claude/plugins/memory/skills/maintain/scripts/. Work silently and print only a final summary when done."
+})
+```
 
-## References (read on demand)
+(If the skill isn't installed at the Claude Code path above — for example, on Codex or OpenCode — the subagent should instead Read the runbook at whatever path the skill is installed. The runbook file is always `references/workflow.md` inside the skill directory.)
 
-- `references/workflow.md` — full runbook with decision rules and failure handling
-- `references/wiki-entry-format.md` — required structure and validator rules
-- `references/transcript-formats.md` — per-agent storage formats (for debugging edge cases)
-- `references/maintenance-passes.md` — contradictions, duplicates, orphans, tag normalization
+Then return to whatever the user was doing. Do not wait for the subagent. Do not report its progress. The subagent prints its own summary when it finishes, which you'll see in the transcript later.
 
-## Scripts
+## Why the split
 
-All in `scripts/`. Each is deterministic — no LLM judgment inside. Invoke via Bash.
+The main agent (you, right now) must not do maintenance work in the current session because:
 
-- `find-new-transcripts.sh` — walks all three transcript stores, outputs unprocessed records
-- `filter-claude-code.py` — Claude Code JSONL → filtered user/assistant text
-- `filter-codex.py` — Codex JSONL → filtered user/assistant text
-- `extract-opencode.py` — queries OpenCode's SQLite → filtered JSONL
-- `process-file.sh` — orchestration: routes to the right filter, stages in raw/sessions/
-- `validate.sh` — runs `memory validate`; call after every wiki write
+- It would clutter the user's conversation with dozens of tool calls
+- It would consume the user's session context budget
+- It would block the user's active work behind a batch operation
 
-## Toolbox
-
-Same seven operations as every memory skill:
-
-- **Read / Edit / Write / Bash `rm`** — native file operations on `~/.memory/wiki/`
-- **Grep / Glob** — find existing entries (avoid duplicates)
-- **Bash `scripts/validate.sh`** — the one gate. Run after every wiki mutation.
+The subagent runs in isolation with a fresh context, sonnet model, and no interference. The same pattern is used for both the cron and manual triggers — one code path, consistent behavior.
 
 ## Rules
 
-- **Never write to `~/.memory/wiki/`** without immediately running `scripts/validate.sh` after.
-- **Fix validation errors before moving on.** Don't accumulate broken state.
-- **Work silently.** Don't narrate progress. Print only the final summary.
-- **Idempotent.** Running you twice with no new data should produce zero writes.
-- **You are a subagent.** Don't spawn further subagents.
-- **Time-bound yourself.** If the transcript backlog is huge, prioritize the most recent and leave older ones for the next run.
+- **Do NOT read `references/workflow.md` yourself.** That file is for the subagent's runbook. If you read it, you'll start following the runbook in the main session, which is exactly what this skill is designed to prevent.
+- **Do NOT run any of the scripts in `scripts/`.** Those are tools for the subagent's runbook, not for you.
+- **Do NOT start processing transcripts.** That's the subagent's job.
+- **Do spawn the subagent and return.** One tool call, then back to the user.
+
+## If the user wants to see what maintenance does
+
+If the user asks *why* you're spawning a subagent or what it will do, you can briefly explain the high-level flow (discover new transcripts → filter → extract knowledge into wiki → validate → optional semantic passes) without reading the runbook. The runbook has the details; the subagent will follow them.
