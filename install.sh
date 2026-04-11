@@ -7,6 +7,9 @@
 # validator as the single gate. There are no MCP servers, no hooks
 # (outside the per-agent permission model), and no background daemons.
 #
+# Usage:
+#   bash install.sh [--cron-project PATH]
+#
 # What this installer does:
 #   1. Builds the Gleam validator.
 #   2. Symlinks the `memory` binary to ~/.local/bin so it's on PATH.
@@ -17,11 +20,36 @@
 #      and maintain skills can write without permission prompts.
 #   6. For OpenCode: writes a minimal opencode.json that points at the
 #      skill directory.
+#   7. If --cron-project is given, registers an hourly memory-maintenance
+#      cron task in <project>/.claude/scheduled_tasks.json. Claude Code's
+#      cron scheduler is per-project, so this must be a project you open
+#      regularly for the maintenance to run.
 #
 # Re-running this script is the canonical way to sync source edits into
 # whichever agent caches expect them.
 
 set -e
+
+# --- Arguments ---------------------------------------------------------------
+
+CRON_PROJECT=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --cron-project)
+      CRON_PROJECT="$2"
+      shift 2
+      ;;
+    --help|-h)
+      sed -n '2,30p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      echo "Usage: bash install.sh [--cron-project PATH]" >&2
+      exit 1
+      ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WIKI_DIR="${MEMORY_HOME:-$HOME/.memory}/wiki"
@@ -163,6 +191,79 @@ EOF
   fi
 fi
 
+# --- Scheduled maintenance cron (Claude Code only, per-project) --------------
+#
+# Claude Code's cron scheduler reads <project-root>/.claude/scheduled_tasks.json
+# — there's no user-global or walk-up fallback. If --cron-project is given,
+# register (or update) the memory-maintenance task in that project's file.
+# If not given, skip and print instructions for manual setup.
+
+if [ -n "$CRON_PROJECT" ]; then
+  if [ ! -d "$CRON_PROJECT" ]; then
+    echo "✗ --cron-project $CRON_PROJECT does not exist" >&2
+    exit 1
+  fi
+  CRON_PROJECT_ABS=$(cd "$CRON_PROJECT" && pwd)
+  CRON_FILE="$CRON_PROJECT_ABS/.claude/scheduled_tasks.json"
+  mkdir -p "$(dirname "$CRON_FILE")"
+
+  echo "→ Registering memory-maintenance cron in $CRON_FILE..."
+  python3 - "$CRON_FILE" <<'PY'
+import json, os, sys, time
+
+path = sys.argv[1]
+
+tasks = []
+if os.path.exists(path):
+    try:
+        with open(path) as f:
+            data = json.load(f) or {}
+        tasks = data.get("tasks") or []
+        if not isinstance(tasks, list):
+            tasks = []
+    except (json.JSONDecodeError, OSError):
+        tasks = []
+
+# Find any existing memory-maintenance task so we can preserve createdAt
+# and lastFiredAt across re-installs (only the prompt/cron/recurring get
+# refreshed from the installer).
+existing = next(
+    (t for t in tasks if isinstance(t, dict) and t.get("id") == "memory-maintenance"),
+    None,
+)
+tasks = [t for t in tasks if isinstance(t, dict) and t.get("id") != "memory-maintenance"]
+
+updated = {
+    "id": "memory-maintenance",
+    "cron": "0 * * * *",
+    "prompt": (
+        "Scheduled memory maintenance. Using the Agent tool, spawn a background "
+        "subagent with description='Memory maintenance', model='sonnet', "
+        "run_in_background=true, and prompt='Invoke the memory:maintain skill "
+        "and follow its runbook at references/workflow.md. Work silently and "
+        "print only a final summary.'. Do not wait for the subagent; return "
+        "immediately to whatever the user was doing."
+    ),
+    "createdAt": existing.get("createdAt") if existing else int(time.time() * 1000),
+    "recurring": True,
+    "permanent": True,
+}
+if existing and "lastFiredAt" in existing:
+    updated["lastFiredAt"] = existing["lastFiredAt"]
+
+tasks.append(updated)
+
+with open(path, "w") as f:
+    json.dump({"tasks": tasks}, f, indent=2)
+    f.write("\n")
+PY
+else
+  echo "→ --cron-project not specified; scheduled maintenance is NOT enabled."
+  echo "  To enable hourly background memory maintenance, re-run with:"
+  echo "    bash install.sh --cron-project <path-to-claude-code-project-you-open-regularly>"
+  echo "  The cron only fires when Claude Code is running in that project."
+fi
+
 echo ""
 echo "✓ memory validator installed at $BIN_DIR/memory"
 echo "✓ Wiki at $WIKI_DIR"
@@ -170,5 +271,10 @@ echo "✓ Wiki at $WIKI_DIR"
 [ -d "$CODEX_SKILLS_DIR/memory-create" ] && echo "✓ Codex skills at $CODEX_SKILLS_DIR/memory-*"
 [ -f "$CODEX_CONFIG_FILE" ] && grep -qF "$MEMORY_HOME_PATH" "$CODEX_CONFIG_FILE" 2>/dev/null && echo "✓ Codex sandbox writable_roots includes $MEMORY_HOME_PATH"
 [ -f "$OPENCODE_CONFIG_FILE" ] && grep -qF "$OPENCODE_SKILLS_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null && echo "✓ OpenCode skills path set in $OPENCODE_CONFIG_FILE"
+[ -n "$CRON_PROJECT" ] && [ -f "$CRON_FILE" ] && echo "✓ Hourly maintenance cron registered in $CRON_FILE"
 echo ""
 echo "If Claude Code is running, use /reload-plugins to apply changes."
+if [ -n "$CRON_PROJECT" ]; then
+  echo "The cron only fires when Claude Code is running in $CRON_PROJECT_ABS."
+  echo "Open (or restart) Claude Code there to start the scheduler."
+fi
