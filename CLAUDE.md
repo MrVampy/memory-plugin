@@ -67,6 +67,8 @@ Memory/
 
 **When touching skill docs**, don't impose content conventions. The docs describe structure (what the validator enforces) and mechanics (how to use the scripts and tools). What the agent saves, what kind it uses, what namespace it picks — those are the agent's call at runtime.
 
+**Install-time substitution.** `plugins/skills/maintain/SKILL.md` contains a `%%SKILL_DIR%%` placeholder in the dispatcher's subagent spawn prompt. `install.sh` runs `sed` on the copied file to replace this with the absolute path of the skill install directory — different for each agent (Claude Code, Codex, OpenCode). If you add more install-time placeholders, use the same `%%NAME%%` convention and add a matching `sed` line in each per-agent install block.
+
 ## Running locally
 
 Prerequisites: `gleam`, `node`, `npm`, `python3`, `bash`.

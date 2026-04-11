@@ -128,6 +128,11 @@ if [ -d "$HOME/.claude" ]; then
   cp -r "$SCRIPT_DIR/plugins/claude-code/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
   cp -r "$SCRIPT_DIR/plugins/skills" "$CLAUDE_PLUGIN_DIR/skills"
 
+  # Substitute %%SKILL_DIR%% in the maintain skill with the absolute
+  # install path so the dispatcher can spawn the subagent with correct paths.
+  sed -i "s|%%SKILL_DIR%%|$CLAUDE_PLUGIN_DIR/skills/maintain|g" \
+    "$CLAUDE_PLUGIN_DIR/skills/maintain/SKILL.md"
+
   if [ -d "$CLAUDE_CACHE_DIR" ]; then
     echo "  → syncing plugin cache..."
     rm -rf "$CLAUDE_CACHE_DIR"
@@ -147,11 +152,12 @@ if [ -d "$HOME/.codex" ]; then
     rm -rf "$CODEX_SKILLS_DIR/memory-$skill"
     cp -r "$SCRIPT_DIR/plugins/skills/$skill" "$CODEX_SKILLS_DIR/memory-$skill"
   done
-  # Install maintain skill if it exists (will be added in a later commit).
-  if [ -d "$SCRIPT_DIR/plugins/skills/maintain" ]; then
-    rm -rf "$CODEX_SKILLS_DIR/memory-maintain"
-    cp -r "$SCRIPT_DIR/plugins/skills/maintain" "$CODEX_SKILLS_DIR/memory-maintain"
-  fi
+  # Install maintain skill with SKILL_DIR substitution so the dispatcher
+  # can spawn the subagent with correct absolute paths.
+  rm -rf "$CODEX_SKILLS_DIR/memory-maintain"
+  cp -r "$SCRIPT_DIR/plugins/skills/maintain" "$CODEX_SKILLS_DIR/memory-maintain"
+  sed -i "s|%%SKILL_DIR%%|$CODEX_SKILLS_DIR/memory-maintain|g" \
+    "$CODEX_SKILLS_DIR/memory-maintain/SKILL.md"
 
   # Sandbox writable_roots — needed for the create skill to write to
   # ~/.memory/wiki/ without permission prompts when Codex runs with
@@ -176,18 +182,37 @@ if [ -d "$HOME/.codex" ]; then
 fi
 
 # --- OpenCode ---
+#
+# OpenCode previously pointed at the source plugins/skills/ directory via
+# opencode.json's skills.paths. That kept dev edits live but prevented us
+# from doing install-time path substitution for the maintain skill. So
+# we now copy the skills to ~/.config/opencode/skills/memory-*/ (same
+# pattern as Codex) and opencode.json points at the copied location.
+# Re-run install.sh to sync source edits.
 OPENCODE_CONFIG_DIR="$HOME/.config/opencode"
 OPENCODE_CONFIG_FILE="$OPENCODE_CONFIG_DIR/opencode.json"
-OPENCODE_SKILLS_PATH="$SCRIPT_DIR/plugins/skills"
+OPENCODE_SKILLS_DIR="$OPENCODE_CONFIG_DIR/skills"
 
 if [ -d "$OPENCODE_CONFIG_DIR" ]; then
+  echo "→ Installing OpenCode skills..."
+  mkdir -p "$OPENCODE_SKILLS_DIR"
+  for skill in create recall; do
+    rm -rf "$OPENCODE_SKILLS_DIR/memory-$skill"
+    cp -r "$SCRIPT_DIR/plugins/skills/$skill" "$OPENCODE_SKILLS_DIR/memory-$skill"
+  done
+  # Install maintain skill with SKILL_DIR substitution.
+  rm -rf "$OPENCODE_SKILLS_DIR/memory-maintain"
+  cp -r "$SCRIPT_DIR/plugins/skills/maintain" "$OPENCODE_SKILLS_DIR/memory-maintain"
+  sed -i "s|%%SKILL_DIR%%|$OPENCODE_SKILLS_DIR/memory-maintain|g" \
+    "$OPENCODE_SKILLS_DIR/memory-maintain/SKILL.md"
+
   if [ -f "$OPENCODE_CONFIG_FILE" ]; then
-    if grep -qF "$OPENCODE_SKILLS_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null; then
+    if grep -qF "$OPENCODE_SKILLS_DIR" "$OPENCODE_CONFIG_FILE" 2>/dev/null; then
       echo "→ OpenCode opencode.json already references the skills path — leaving alone."
     else
       echo "→ OpenCode opencode.json exists but doesn't reference the skills path."
       echo "  Add this manually to opencode.json:"
-      echo "    \"skills\": { \"paths\": [\"$OPENCODE_SKILLS_PATH\"] }"
+      echo "    \"skills\": { \"paths\": [\"$OPENCODE_SKILLS_DIR\"] }"
     fi
   else
     echo "→ Creating $OPENCODE_CONFIG_FILE..."
@@ -195,7 +220,7 @@ if [ -d "$OPENCODE_CONFIG_DIR" ]; then
 {
   "\$schema": "https://opencode.ai/config.json",
   "skills": {
-    "paths": ["$OPENCODE_SKILLS_PATH"]
+    "paths": ["$OPENCODE_SKILLS_DIR"]
   }
 }
 EOF
@@ -280,7 +305,7 @@ echo "✓ Wiki at $WIKI_DIR"
 [ -d "$CLAUDE_PLUGIN_DIR" ] && echo "✓ Claude Code plugin at $CLAUDE_PLUGIN_DIR"
 [ -d "$CODEX_SKILLS_DIR/memory-create" ] && echo "✓ Codex skills at $CODEX_SKILLS_DIR/memory-*"
 [ -f "$CODEX_CONFIG_FILE" ] && grep -qF "$MEMORY_HOME_PATH" "$CODEX_CONFIG_FILE" 2>/dev/null && echo "✓ Codex sandbox writable_roots includes $MEMORY_HOME_PATH"
-[ -f "$OPENCODE_CONFIG_FILE" ] && grep -qF "$OPENCODE_SKILLS_PATH" "$OPENCODE_CONFIG_FILE" 2>/dev/null && echo "✓ OpenCode skills path set in $OPENCODE_CONFIG_FILE"
+[ -f "$OPENCODE_CONFIG_FILE" ] && grep -qF "$OPENCODE_SKILLS_DIR" "$OPENCODE_CONFIG_FILE" 2>/dev/null && echo "✓ OpenCode skills at $OPENCODE_SKILLS_DIR/memory-*"
 [ -n "$CRON_PROJECT" ] && [ -f "$CRON_FILE" ] && echo "✓ Hourly maintenance cron registered in $CRON_FILE"
 echo ""
 

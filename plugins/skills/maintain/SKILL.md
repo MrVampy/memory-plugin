@@ -16,11 +16,9 @@ Agent({
   description: "Memory maintenance",
   model: "sonnet",
   run_in_background: true,
-  prompt: "You are the memory maintenance subagent. Your working context is the memory maintenance skill at ~/.claude/plugins/memory/skills/maintain/. Read ~/.claude/plugins/memory/skills/maintain/references/workflow.md and follow the runbook exactly. All scripts it references are at ~/.claude/plugins/memory/skills/maintain/scripts/. Work silently and print only a final summary when done."
+  prompt: "You are the memory maintenance subagent. Your working context is the memory maintenance skill at %%SKILL_DIR%%. Read %%SKILL_DIR%%/references/workflow.md and follow the runbook exactly. All scripts it references are at %%SKILL_DIR%%/scripts/. Work silently and print only a final summary when done."
 })
 ```
-
-(If the skill isn't installed at the Claude Code path above — for example, on Codex or OpenCode — the subagent should instead Read the runbook at whatever path the skill is installed. The runbook file is always `references/workflow.md` inside the skill directory.)
 
 Then return to whatever the user was doing. Do not wait for the subagent. Do not report its progress. The subagent prints its own summary when it finishes, which you'll see in the transcript later.
 
