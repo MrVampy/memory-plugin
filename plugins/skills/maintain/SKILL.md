@@ -21,7 +21,7 @@ You are running as a scheduled background subagent. Your job is to process new s
 ## References (read on demand)
 
 - `references/workflow.md` — full runbook with decision rules and failure handling
-- `references/wiki-entry-format.md` — YAML frontmatter shape, validator rules, namespace conventions
+- `references/wiki-entry-format.md` — required structure and validator rules
 - `references/transcript-formats.md` — per-agent storage formats (for debugging edge cases)
 - `references/maintenance-passes.md` — contradictions, duplicates, orphans, tag normalization
 

@@ -55,35 +55,21 @@ Read(~/.memory/raw/sessions/<id>)
 
 Each line is JSON: `{"role": "user"|"assistant", "content": [text, ...]}`. The transcript is a cleaned conversation — no tool calls, no system reminders, just human/assistant text.
 
-### Step 3b: Scan for knowledge worth extracting
+### Step 3b: Decide what to extract
 
-Look for:
-
-- **Insights or decisions** the user reached or approved ("we decided to use X")
-- **Technical findings** that would be useful in future sessions (how things work, architecture understanding)
-- **User preferences and feedback** (corrections, approvals, stated preferences)
-- **Project context** — *why* something was done a certain way, what was tried and rejected
-- **Personal facts** the user shared about themselves (profile, preferences, situation)
-
-Skip:
-
-- Back-and-forth debugging details (process, not knowledge)
-- Ephemeral task progress ("I'm now running X, Y, Z")
-- Redundant information already captured in an existing wiki entry
-- Short exchanges with no substantive content
-- Questions the user answered but didn't decide anything durable about
+Read the transcript and decide what (if anything) is worth turning into wiki entries. This is your judgment call — the skill does not prescribe what counts as knowledge worth keeping. The corpus is self-describing: if you need context for what the wiki currently covers, glob and read.
 
 ### Step 3c: For each knowledge item, find or create a wiki entry
 
 1. **Search `~/.memory/wiki/`** with grep for related topics — avoid duplicates
 2. **If an existing entry covers the topic:**
    - Read it
-   - Edit to merge the new information (add a new section, update existing text, or append to an existing section)
+   - Edit to merge the new information
    - Update `meta.updated` to the current ISO timestamp
    - Append the transcript id to `meta.sources`
 3. **If no existing entry fits:**
-   - Compose a new entry in markdown
-   - Pick a namespace from existing conventions (see `references/wiki-entry-format.md`)
+   - Compose a new entry in markdown (see `references/wiki-entry-format.md` for the required structure)
+   - Choose an id and namespace — existing namespaces are listed in the entry format reference, but you can create new ones if nothing fits
    - Write to `~/.memory/wiki/<id>.md`
 4. **Run `scripts/validate.sh`** — fix any errors reported and re-validate until clean
 

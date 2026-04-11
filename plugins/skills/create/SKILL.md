@@ -82,49 +82,39 @@ frontmatter `links` entries.
 
 ### Validator rules (the validator will reject violations)
 
-1. **IDs use dot-notation.** e.g. `lang.gleam.actors`, `cognitive.intp.profile`. Filename must match `<id>.md`.
-2. **Tags are block-style YAML.** One per line, indented with `- `. NOT flow-style `[a, b]` — the parser rejects flow-style.
-3. **Tags are lowercase slugs.** No spaces.
-4. **Every `[[ref]]` in the body has a matching entry in `links`.** And vice versa. The validator checks both directions.
-5. **Every `links[].target` resolves to an existing entry.** (Exception: removing a target is valid as long as nothing references it.)
-6. **Every link has a non-empty `label`.**
-7. **All meta fields required:** `created`, `updated`, `sources` (list).
-8. **Timestamps are quoted ISO 8601 strings.**
+1. **Required top-level fields:** `id`, `title`, `kind`, `tags`, `links`, `meta`.
+2. **IDs contain at least one dot** (dot-notation). Filename must match `<id>.md`.
+3. **Tags must parse as a block-style YAML list** — one per line, indented with `- `. Flow-style `[a, b]` is rejected by the parser.
+4. **Tags must be non-empty strings without spaces.** That's the only content constraint.
+5. **Bidirectional link integrity:** every `[[ref]]` in the body has a matching entry in `links`, and every `links[].target` has a matching `[[ref]]` in the body.
+6. **Every `links[].target` resolves to an existing entry.**
+7. **Every link has a non-empty `label`.**
+8. **Required meta fields:** `meta.created`, `meta.updated`, `meta.sources` (list).
+9. **Timestamps are quoted ISO 8601 strings.**
 
-When updating an existing entry, **keep the original `created` timestamp** and only update `meta.updated`.
+Everything else is free. The validator doesn't care about tag case, title wording, `kind` value, namespace choice, or body structure. Those are the creator's call.
 
-## Namespace conventions
-
-Before creating a new id, browse the existing namespaces with glob to pick a consistent one. Common namespaces you'll see:
-
-- `cognitive.*` — user's cognitive profile, MBTI, preferences
-- `lang.<language>.*` — language-specific knowledge
-- `tools.*` — tooling decisions
-- `arch.*` — architecture decisions
-- `strategy.*` — strategic thinking
-- `concepts.*` — general concepts
-
-Pick an existing namespace when possible. Create a new one only when nothing fits.
+When updating an existing entry, **keep the original `meta.created`** and only update `meta.updated`. This is a provenance convention, not a validator rule.
 
 ## What NOT to do
 
-- **Don't proactively save things** that "seem interesting" during a conversation. The scheduled maintenance subagent does that based on transcripts. Only save what the user explicitly asks you to save.
-- **Don't skip the grep-for-existing step.** Duplicate entries under different ids are the worst kind of mess to clean up.
+- **Don't proactively save things** that "seem interesting" during a conversation. The scheduled maintenance subagent handles automatic capture. Only save what the user explicitly asks you to save.
+- **Don't skip the grep-for-existing step.** Duplicate entries under different ids are painful to clean up later.
 - **Don't delete without checking inbound links first.** The validator catches it post-hoc, but by then you've already broken things.
 - **Don't write anything to `~/.memory/wiki/` without validating immediately after.**
-- **Don't spawn a subagent for this.** Explicit user-requested writes are fast (one or two entries), you can do them in the main thread. The scheduled maintenance flow uses subagents because it processes many entries in batch.
+- **Don't spawn a subagent for this.** Explicit user-requested writes are fast — do them in the main thread. The maintenance flow uses subagents because it batches across many entries.
 
 ## A typical interaction
 
-User: *"Remember that I prefer Gleam over Rust for new projects."*
+User: *"Remember that I prefer X."*
 
 Agent:
 
-1. Grep `~/.memory/wiki/` for "Gleam" and "Rust" — find candidates like `lang.gleam.full-stack-decision.md`.
-2. Read the most relevant candidate. If it already captures this preference, update it. If not, create a new entry under `user.preferences.language` or similar.
-3. Write the entry via Write tool.
+1. Grep `~/.memory/wiki/` for terms related to X — find any existing entries that might already cover it.
+2. Read the most relevant candidate. Update it if it fits; compose a new entry if nothing does.
+3. Write the entry via the Write tool.
 4. Run `memory validate` via Bash.
-5. If clean, report: *"Saved as `user.preferences.language`."*
-6. If errors, fix and retry.
+5. If clean, report the entry id to the user.
+6. If the validator reports errors, fix and retry.
 
-One turn, a handful of tool calls, the user's knowledge is now durable.
+One turn, a handful of tool calls, the knowledge is now durable.

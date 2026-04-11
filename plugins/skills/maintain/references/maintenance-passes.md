@@ -4,6 +4,12 @@ These passes run on longer cycles (once per ~24 hours, tracked by `~/.memory/.ma
 
 Each pass is independent. Run as many as time permits; skip ones that don't apply.
 
+**What the validator enforces vs. what these passes handle**
+
+The validator enforces the per-entry structure — frontmatter shape, link bidirectionality within a single entry, required fields. These passes handle *semantic* issues across the corpus — contradictions, duplicates, stale info, tag variants. The validator has no opinion on any of this; these passes are judgment calls about knowledge quality.
+
+When you run these passes, you are acting on your own judgment, not applying validator-style rules. When you're unsure, report and let the user decide.
+
 ## Pass 1: Contradiction detection
 
 **Goal:** find pairs of entries that make opposing claims about the same topic.
@@ -64,12 +70,9 @@ Each pass is independent. Run as many as time permits; skip ones that don't appl
 
 **What to do:**
 
-- **Don't automatically delete orphans.** Being unlinked doesn't mean being useless:
-  - Root-level concepts and entry-point knowledge often have no inbound links
-  - User profile entries are typically root-level
-  - Recently created entries might not have been linked yet
-- **Surface them in the report** for user review
-- **Exception:** if the orphan has `kind: ephemeral`, `kind: scratch`, or `kind: draft`, delete it
+- **Don't automatically delete orphans.** Being unlinked doesn't imply being useless — an entry might be a root-level concept, a recently created entry that hasn't been linked yet, or deliberately standalone.
+- **Surface them in the report** for user review.
+- If the entry's own frontmatter signals that it's throwaway (e.g. a `kind` value the creator used to mark scratch content), deleting is fine — but read the entry before deciding, don't pattern-match on a fixed list of kind values.
 
 ## Pass 4: Tag normalization
 

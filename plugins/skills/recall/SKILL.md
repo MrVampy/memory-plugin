@@ -40,16 +40,13 @@ Search for `- tagname` in `~/.memory/wiki/` to find entries by tag.
 **By namespace** (browse a topic area):
 
 The wiki uses dot-notation ids, so namespace prefixes work like directories.
-Use your glob tool with patterns like:
-
-- `~/.memory/wiki/lang.gleam.*.md`
-- `~/.memory/wiki/cognitive.*.md`
-- `~/.memory/wiki/tools.memory-*.md`
+Glob `~/.memory/wiki/<prefix>.*.md` where `<prefix>` is whatever namespace
+prefix you're interested in. If you don't know what namespaces exist,
+glob `~/.memory/wiki/*.md` first and look at the id prefixes.
 
 **By id** (when you already know it from a search hit or a link):
 
-Read the file directly at `~/.memory/wiki/<id>.md` — for example
-`~/.memory/wiki/cognitive.intp.profile.md`.
+Read the file directly at `~/.memory/wiki/<id>.md`.
 
 **Listing everything**:
 
@@ -74,17 +71,11 @@ opening the target.
 # What to do with what you find
 
 - **Cite the entry id** when referencing recalled knowledge so the user knows the source
-- **If a recalled entry seems wrong or outdated**, update it via `memory_create` (the
-  create skill explains the format) — don't just work around stale information
-- **If two entries cover the same topic with conflicting info**, surface the conflict
-  to the user
+- **If a recalled entry seems wrong or outdated** and the user wants it changed, use the `create` skill to update it (native Write + `memory validate`) — don't just work around stale information
+- **If two entries cover the same topic with conflicting info**, surface the conflict to the user
 
 # What NOT to do
 
-- **Don't skip the check because the question seems simple.** Simple questions often
-  have prior context you don't have in your weights ("what's my MBTI" is a one-word
-  answer that lives in `cognitive.intp.profile`).
-- **Don't pretend you "remember" something** — recall it explicitly so the user can
-  verify the source.
-- **Don't write to the wiki via Write/Edit** — that bypasses validation. Use
-  `memory_create` (the MCP tool) for any wiki writes.
+- **Don't skip the check because the question seems simple.** Simple questions often have prior context you don't have in your weights — the user may have already told you the answer in a previous session.
+- **Don't pretend you "remember" something** — recall it explicitly so the user can verify the source.
+- **Don't write to the wiki without running `memory validate` after.** The validator is the single gate on the wiki's consistency — see the `create` skill for the write workflow.
