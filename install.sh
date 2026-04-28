@@ -115,6 +115,42 @@ fi
 
 mkdir -p "$WIKI_DIR"
 
+# --- Helpers -----------------------------------------------------------------
+#
+# AGENTS.md is the Codex- and OpenCode-equivalent of Claude Code's SessionStart
+# hook: a static file auto-loaded into every session. We append the plugin's
+# reminder block between marker comments so re-runs are idempotent and the
+# user's other AGENTS.md content is preserved.
+
+AGENTS_MD_BEGIN="<!-- memory-plugin:begin -->"
+AGENTS_MD_END="<!-- memory-plugin:end -->"
+AGENTS_MD_SNIPPET="$SCRIPT_DIR/plugins/agents-md-snippet.md"
+
+upsert_agents_md_snippet() {
+  local target_file="$1"
+  mkdir -p "$(dirname "$target_file")"
+  touch "$target_file"
+
+  local tmp
+  tmp=$(mktemp)
+  awk -v b="$AGENTS_MD_BEGIN" -v e="$AGENTS_MD_END" '
+    $0 == b { skip=1; next }
+    $0 == e { skip=0; next }
+    !skip
+  ' "$target_file" > "$tmp"
+
+  if [ -s "$tmp" ]; then
+    echo "" >> "$tmp"
+  fi
+  {
+    echo "$AGENTS_MD_BEGIN"
+    cat "$AGENTS_MD_SNIPPET"
+    echo "$AGENTS_MD_END"
+  } >> "$tmp"
+
+  mv "$tmp" "$target_file"
+}
+
 # --- 4. Per-agent skill installation -----------------------------------------
 
 # --- Claude Code ---
@@ -122,11 +158,14 @@ CLAUDE_PLUGIN_DIR="$HOME/.claude/plugins/memory"
 CLAUDE_CACHE_DIR="$HOME/.claude/plugins/cache/local/memory/0.1.0"
 
 if [ -d "$HOME/.claude" ]; then
-  echo "→ Installing Claude Code plugin (skills only)..."
+  echo "→ Installing Claude Code plugin..."
   rm -rf "$CLAUDE_PLUGIN_DIR"
   mkdir -p "$CLAUDE_PLUGIN_DIR"
   cp -r "$SCRIPT_DIR/plugins/claude-code/.claude-plugin" "$CLAUDE_PLUGIN_DIR/"
-  cp -r "$SCRIPT_DIR/plugins/skills" "$CLAUDE_PLUGIN_DIR/skills"
+  cp -r "$SCRIPT_DIR/plugins/claude-code/hooks"          "$CLAUDE_PLUGIN_DIR/hooks"
+  cp -r "$SCRIPT_DIR/plugins/claude-code/scripts"        "$CLAUDE_PLUGIN_DIR/scripts"
+  cp -r "$SCRIPT_DIR/plugins/skills"                     "$CLAUDE_PLUGIN_DIR/skills"
+  chmod +x "$CLAUDE_PLUGIN_DIR/scripts/"*.sh 2>/dev/null || true
 
   # Substitute %%SKILL_DIR%% in the maintain skill with the absolute
   # install path so the dispatcher can spawn the subagent with correct paths.
@@ -137,6 +176,31 @@ if [ -d "$HOME/.claude" ]; then
     echo "  → syncing plugin cache..."
     rm -rf "$CLAUDE_CACHE_DIR"
     cp -r "$CLAUDE_PLUGIN_DIR" "$CLAUDE_CACHE_DIR"
+  fi
+
+  # Disable Claude Code's built-in auto-memory so the plugin's wiki is the
+  # sole memory source (no split-brain). Only touches user settings.json;
+  # project-scope settings are the user's call.
+  CLAUDE_USER_SETTINGS="$HOME/.claude/settings.json"
+  if command -v jq >/dev/null 2>&1; then
+    if [ -f "$CLAUDE_USER_SETTINGS" ]; then
+      # `//` coerces on falsy, so `.x // "unset"` returns "unset" even when x=false.
+      # Use has() + explicit branch to tell "explicitly false" apart from missing.
+      current=$(jq -r 'if has("autoMemoryEnabled") then (.autoMemoryEnabled|tostring) else "unset" end' "$CLAUDE_USER_SETTINGS")
+      if [ "$current" != "false" ]; then
+        echo "→ Disabling Claude Code autoMemoryEnabled in $CLAUDE_USER_SETTINGS..."
+        tmp=$(mktemp)
+        jq '.autoMemoryEnabled = false' "$CLAUDE_USER_SETTINGS" > "$tmp" && mv "$tmp" "$CLAUDE_USER_SETTINGS"
+      else
+        echo "→ Claude Code autoMemoryEnabled already false — leaving alone."
+      fi
+    else
+      echo "→ Creating $CLAUDE_USER_SETTINGS with autoMemoryEnabled disabled..."
+      echo '{"autoMemoryEnabled": false}' | jq . > "$CLAUDE_USER_SETTINGS"
+    fi
+  else
+    echo "  ⚠  jq not installed — skipped disabling Claude Code autoMemoryEnabled."
+    echo "     Set \"autoMemoryEnabled\": false in $CLAUDE_USER_SETTINGS manually."
   fi
 fi
 
@@ -179,6 +243,29 @@ if [ -d "$HOME/.codex" ]; then
     } >> "$CODEX_CONFIG_FILE"
   fi
 
+  # Codex has no SessionStart hook equivalent — AGENTS.md is the canonical
+  # way to inject a persistent instruction into every session.
+  echo "→ Writing memory reminder block to $HOME/.codex/AGENTS.md..."
+  upsert_agents_md_snippet "$HOME/.codex/AGENTS.md"
+
+  # Belt-and-suspenders: Codex's native `memories` feature is default-off, but
+  # pin it to false so a future default flip doesn't introduce split-brain.
+  if [ -f "$CODEX_CONFIG_FILE" ] && grep -q "^\[features\]" "$CODEX_CONFIG_FILE" 2>/dev/null && grep -qE "^[[:space:]]*memories[[:space:]]*=" "$CODEX_CONFIG_FILE" 2>/dev/null; then
+    echo "→ Codex config.toml already declares features.memories — leaving alone."
+  else
+    echo "→ Pinning Codex features.memories = false (wiki plugin is sole memory)..."
+    {
+      [ -f "$CODEX_CONFIG_FILE" ] && echo ""
+      echo "# Added by Memory installer — the wiki at ~/.memory is the sole memory"
+      echo "# source; disable Codex's native memories feature to prevent split-brain."
+      echo "[features]"
+      echo "memories = false"
+      echo ""
+      echo "[memories]"
+      echo "use_memories = false"
+      echo "generate_memories = false"
+    } >> "$CODEX_CONFIG_FILE"
+  fi
 fi
 
 # --- OpenCode ---
@@ -225,6 +312,11 @@ if [ -d "$OPENCODE_CONFIG_DIR" ]; then
 }
 EOF
   fi
+
+  # OpenCode auto-loads ~/.config/opencode/AGENTS.md as persistent instructions.
+  # Same role as Claude Code's SessionStart hook and Codex's AGENTS.md.
+  echo "→ Writing memory reminder block to $OPENCODE_CONFIG_DIR/AGENTS.md..."
+  upsert_agents_md_snippet "$OPENCODE_CONFIG_DIR/AGENTS.md"
 fi
 
 # --- Scheduled maintenance cron (Claude Code only, per-project) --------------
@@ -273,11 +365,11 @@ updated = {
     "id": "memory-maintenance",
     "cron": "0 * * * *",
     "prompt": (
-        "Scheduled hourly memory maintenance. Invoke the memory:maintain "
-        "skill — it will dispatch the work to a background subagent. You "
-        "should not do maintenance work yourself in this session. Follow "
-        "the skill's dispatcher instructions and return to the user's "
-        "work immediately."
+        "[SYSTEM CRON TICK - memory maintenance]\n\n"
+        "Invoke the memory:maintain skill — it will dispatch the work to "
+        "a background subagent. You should not do maintenance work "
+        "yourself in this session. Follow the skill's dispatcher "
+        "instructions and return to the user's work immediately."
     ),
     "createdAt": existing.get("createdAt") if existing else int(time.time() * 1000),
     "recurring": True,
@@ -303,9 +395,12 @@ echo ""
 echo "✓ memory validator installed at $BIN_DIR/memory"
 echo "✓ Wiki at $WIKI_DIR"
 [ -d "$CLAUDE_PLUGIN_DIR" ] && echo "✓ Claude Code plugin at $CLAUDE_PLUGIN_DIR"
+[ -f "$CLAUDE_PLUGIN_DIR/hooks/hooks.json" ] && echo "✓ Claude Code SessionStart hook registered via plugin"
 [ -d "$CODEX_SKILLS_DIR/memory-create" ] && echo "✓ Codex skills at $CODEX_SKILLS_DIR/memory-*"
 [ -f "$CODEX_CONFIG_FILE" ] && grep -qF "$MEMORY_HOME_PATH" "$CODEX_CONFIG_FILE" 2>/dev/null && echo "✓ Codex sandbox writable_roots includes $MEMORY_HOME_PATH"
+[ -f "$HOME/.codex/AGENTS.md" ] && grep -qF "$AGENTS_MD_BEGIN" "$HOME/.codex/AGENTS.md" 2>/dev/null && echo "✓ Codex AGENTS.md contains memory reminder block"
 [ -f "$OPENCODE_CONFIG_FILE" ] && grep -qF "$OPENCODE_SKILLS_DIR" "$OPENCODE_CONFIG_FILE" 2>/dev/null && echo "✓ OpenCode skills at $OPENCODE_SKILLS_DIR/memory-*"
+[ -f "$OPENCODE_CONFIG_DIR/AGENTS.md" ] && grep -qF "$AGENTS_MD_BEGIN" "$OPENCODE_CONFIG_DIR/AGENTS.md" 2>/dev/null && echo "✓ OpenCode AGENTS.md contains memory reminder block"
 [ -n "$CRON_PROJECT" ] && [ -f "$CRON_FILE" ] && echo "✓ Hourly maintenance cron registered in $CRON_FILE"
 echo ""
 
