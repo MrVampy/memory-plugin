@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # memory CLI launcher.
 #
 # Finds its own install location by following symlinks, then runs the
