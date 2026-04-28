@@ -1,8 +1,8 @@
 name = "memory"
 version = "0.1.0"
 target = "javascript"
-description = "Typed wiki memory system for Claude Code"
-repository = { type = "github", user = "MrVampy", repo = "Memory" }
+description = "Typed wiki memory shared across Claude Code, Codex, and OpenCode"
+repository = { type = "github", user = "MrVampy", repo = "memory-plugin" }
 
 [javascript]
 runtime = "nodejs"

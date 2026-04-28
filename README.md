@@ -1,8 +1,10 @@
-# Memory
+# memory-plugin
 
-A persistent, typed wiki that three coding agents share — **Claude Code**, **Codex**, and **OpenCode**. Your conversations with each agent accumulate into a single markdown knowledge base at `~/.memory/wiki/` that all three can read and write. A scheduled subagent processes session transcripts into structured entries in the background.
+A persistent, typed wiki that three coding agents share — **Claude Code**, **Codex**, and **OpenCode**. Your conversations with each agent accumulate into a single markdown knowledge base at `~/.memory/wiki/` that all three can read and write. A scheduled subagent processes session transcripts into structured entries in the background, so the agents remember what you've decided, preferred, or built — without you having to repeat it.
 
 Built on the [Karpathy wiki pattern](https://karpathy.bearblog.dev/self-unsupervised-learning/): an LLM incrementally compiles a persistent knowledge base rather than re-deriving knowledge from raw transcripts every session.
+
+> **Status:** early but used daily. The validator is solid; the maintain skill's heuristics are still maturing. If you try it, expect to tune what your agents save. PRs and issues welcome.
 
 ## The shape of it
 
@@ -42,8 +44,8 @@ Optional but expected:
 ## Install
 
 ```bash
-git clone https://github.com/MrVampy/Memory.git
-cd Memory
+git clone https://github.com/MrVampy/memory-plugin.git
+cd memory-plugin
 bash install.sh
 ```
 
@@ -184,4 +186,4 @@ Memory/
 
 ## License
 
-See LICENSE (or check the repo root).
+MIT. See [LICENSE](./LICENSE).
