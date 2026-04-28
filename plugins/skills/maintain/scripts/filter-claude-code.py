@@ -2,11 +2,18 @@
 """Filter a Claude Code transcript to just user/assistant text content.
 
 Usage:
-  filter-claude-code.py <path>   # reads the file
-  filter-claude-code.py          # reads from stdin
+  filter-claude-code.py <path> [--skip N]
+  filter-claude-code.py [--skip N]          # reads from stdin
 
 Output: filtered JSONL on stdout. Each line: {"role": "user"|"assistant", "content": [text, ...]}
+
+--skip N skips the first N raw lines of the source before filtering. Used
+by the maintenance pipeline to avoid reprocessing already-seen turns in an
+append-only transcript. The skip is counted against raw input lines (not
+filtered output lines), so it aligns with the line-count cursor stored in
+~/.memory/processed/sessions/<id>.
 """
+import argparse
 import json
 import sys
 
@@ -19,12 +26,18 @@ FILTER_PREFIXES = (
 
 
 def main() -> int:
-    path = sys.argv[1] if len(sys.argv) > 1 else None
-    stream = open(path, encoding="utf-8") if path else sys.stdin
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", nargs="?")
+    parser.add_argument("--skip", type=int, default=0)
+    args = parser.parse_args()
+
+    stream = open(args.path, encoding="utf-8") if args.path else sys.stdin
 
     try:
-        for line in stream:
-            line = line.strip()
+        for i, raw_line in enumerate(stream):
+            if i < args.skip:
+                continue
+            line = raw_line.strip()
             if not line:
                 continue
             try:
@@ -59,7 +72,7 @@ def main() -> int:
             if texts:
                 print(json.dumps({"role": role, "content": texts}, ensure_ascii=False))
     finally:
-        if path:
+        if args.path:
             stream.close()
 
     return 0

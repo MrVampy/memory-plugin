@@ -2,9 +2,16 @@
 """Extract an OpenCode session from its SQLite store into filtered JSONL.
 
 Usage:
-  extract-opencode.py <session_id>
+  extract-opencode.py <session_id> [--since TIMESTAMP] [--cursor-out PATH]
 
 Output: filtered JSONL on stdout. Each line: {"role": "user"|"assistant", "content": [text, ...]}
+
+--since TIMESTAMP    only extract messages with time_created > TIMESTAMP
+                     (the unix-ms stored in the message table). Default: 0.
+--cursor-out PATH    after extraction, write the max time_created seen
+                     (as a single integer) to PATH. If no new messages
+                     matched, writes the --since value unchanged so the
+                     cursor is still committable.
 
 OpenCode schema:
   message table: (id, session_id, time_created, time_updated, data)
@@ -12,6 +19,7 @@ OpenCode schema:
   part table:    (id, message_id, session_id, time_created, time_updated, data)
     data JSON has: type, text?, ...
 """
+import argparse
 import json
 import os
 import sqlite3
@@ -24,26 +32,32 @@ FILTER_PREFIXES = (
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        print("Usage: extract-opencode.py <session_id>", file=sys.stderr)
-        return 1
+    parser = argparse.ArgumentParser()
+    parser.add_argument("session_id")
+    parser.add_argument("--since", type=int, default=0)
+    parser.add_argument("--cursor-out", dest="cursor_out", default=None)
+    args = parser.parse_args()
 
-    session_id = sys.argv[1]
     db_path = os.path.expanduser("~/.local/share/opencode/opencode.db")
     if not os.path.exists(db_path):
         print(f"OpenCode DB not found: {db_path}", file=sys.stderr)
         return 1
 
+    max_seen = args.since
+
     db = sqlite3.connect(db_path)
     try:
         messages = list(
             db.execute(
-                "SELECT id, data FROM message WHERE session_id = ? ORDER BY time_created",
-                (session_id,),
+                "SELECT id, time_created, data FROM message "
+                "WHERE session_id = ? AND time_created > ? ORDER BY time_created",
+                (args.session_id, args.since),
             )
         )
 
-        for msg_id, msg_data_json in messages:
+        for msg_id, time_created, msg_data_json in messages:
+            if time_created > max_seen:
+                max_seen = time_created
             try:
                 msg_data = json.loads(msg_data_json)
             except json.JSONDecodeError:
@@ -81,6 +95,10 @@ def main() -> int:
                 )
     finally:
         db.close()
+
+    if args.cursor_out:
+        with open(args.cursor_out, "w") as f:
+            f.write(f"{max_seen}\n")
 
     return 0
 
