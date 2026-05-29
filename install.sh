@@ -252,6 +252,14 @@ if [ -d "$HOME/.codex" ]; then
   # pin it to false so a future default flip doesn't introduce split-brain.
   if [ -f "$CODEX_CONFIG_FILE" ] && grep -q "^\[features\]" "$CODEX_CONFIG_FILE" 2>/dev/null && grep -qE "^[[:space:]]*memories[[:space:]]*=" "$CODEX_CONFIG_FILE" 2>/dev/null; then
     echo "→ Codex config.toml already declares features.memories — leaving alone."
+  elif [ -f "$CODEX_CONFIG_FILE" ] && grep -q "^\[features\]" "$CODEX_CONFIG_FILE" 2>/dev/null; then
+    echo "→ Codex config.toml has [features] but no memories key."
+    echo "  Add this manually under the existing [features] section:"
+    echo "    memories = false"
+    echo "  And add a [memories] section if missing:"
+    echo "    [memories]"
+    echo "    use_memories = false"
+    echo "    generate_memories = false"
   else
     echo "→ Pinning Codex features.memories = false (wiki plugin is sole memory)..."
     {
