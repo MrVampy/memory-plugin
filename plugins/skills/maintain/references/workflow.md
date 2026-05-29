@@ -26,6 +26,8 @@ The marker file at `~/.memory/processed/sessions/<id>` holds a single integer �
 
 This means **in-progress sessions get re-picked-up on every tick** as long as they keep growing. Each tick processes only the diff since the last cursor, not the whole transcript.
 
+`find-new-transcripts.sh` emits records **oldest-first** (ascending by latest-content time across all three agents). **Process them in the order given — do not reorder.** Phase 3 merges new content into existing entries, so chronology is load-bearing: extracting a newer session before an older one lands stale content on top of newer revisions. Always extend the wiki forward in time.
+
 If the output is empty, **skip to Phase 4** (maintenance passes) — there's nothing new to process.
 
 ## Phase 2: Stage each transcript
@@ -214,11 +216,12 @@ Call this every run, even when commit said "no changes to commit" — it's idemp
 - **Validator errors you can't fix** after 3 attempts: skip the entry, move to the next, report in the summary
 - **Transcript file corrupt or format unrecognized:** skip, still move to processed/ so you don't retry forever
 - **Cross-transcript conflicts** that need user judgment: flag in report, let the next maintenance pass resolve or surface to user
-- **Out of context (huge backlog):** prioritize most recent transcripts, leave older ones for the next run
+- **Out of context (huge backlog):** you are *already* processing oldest-first (it's a general rule — see Rules below); a big backlog only changes *where you stop*, not the order. When context runs low, stop and leave the *newest* unprocessed sessions for the next tick — never flip to newest-first. Safe by construction: deferred (newer) sessions keep their cursor unchanged and are picked up on the next run
 - **Script invocation failed:** check `references/transcript-formats.md` — the filter may need updating for an edge case in the agent's format
 
 ## Rules
 
+- **Always process oldest-first — every run, not just large backlogs.** `find-new-transcripts.sh` emits records oldest-first; process them in that order and never reorder. The wiki is built by merging into existing entries (Phase 3), so chronological order is load-bearing: a newer session processed before an older one lands stale content on top of newer revisions and corrupts the chronology. Always extend the wiki forward in time.
 - **Never write to `~/.memory/wiki/`** without immediately running `scripts/validate.sh` after.
 - **One entry at a time through validation.** Don't batch many writes and validate once at the end — fix errors as they appear.
 - **Idempotent.** If there's nothing to do, do nothing and exit cleanly.
