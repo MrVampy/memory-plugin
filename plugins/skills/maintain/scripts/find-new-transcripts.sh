@@ -24,8 +24,9 @@
 # ~/.memory/processed/sessions/<id> against the current size of the source.
 # For file-based agents, a session is emitted only when its current line
 # count exceeds the stored cursor — meaning there is genuinely new content
-# to process. OpenCode sessions are always emitted and the extractor
-# decides via the --since cursor whether anything new exists.
+# to process. OpenCode sessions are emitted only when their latest message
+# (MAX(time_created)) is newer than the stored cursor — the same
+# "new content only" rule as the file agents (no dormant-session churn).
 #
 # The marker file ~/.memory/processed/sessions/<id> contains a single
 # integer on its first line (legacy empty markers are treated as cursor=0
@@ -81,8 +82,18 @@ emit_if_new_file() {
 emit_opencode() {
   local id="$1"
   local session_id="$2"
-  local key="$3"
-  printf "%s\t%s\t%s\t%s\t%s\n" "$key" "opencode" "$id" "$session_id" "$(read_cursor "$id")" >> "$TMP"
+  local key="$3"        # sortkey (seconds)
+  local max_ms="$4"     # MAX(time_created) for this session, unix-ms
+  local cursor
+  cursor=$(read_cursor "$id")
+  # Emit only when there is genuinely new content past the cursor — the
+  # session's latest message must be newer than the consumed cursor.
+  # Without this, every dormant OpenCode session is re-emitted on every
+  # tick and churns an empty diff forever (a session unused since April
+  # should never show up as "pending").
+  if [ "${max_ms:-0}" -gt "${cursor:-0}" ]; then
+    printf "%s\t%s\t%s\t%s\t%s\n" "$key" "opencode" "$id" "$session_id" "$cursor" >> "$TMP"
+  fi
 }
 
 # --- Claude Code: ~/.claude/projects/<project>/<session-id>.jsonl ---
@@ -128,7 +139,7 @@ finally:
 PY
     [ -z "$session_id" ] && continue
     key=$(( ${tcreated_ms:-0} / 1000 ))
-    emit_opencode "opencode-${session_id}.jsonl" "$session_id" "$key"
+    emit_opencode "opencode-${session_id}.jsonl" "$session_id" "$key" "$tcreated_ms"
   done
 fi
 
