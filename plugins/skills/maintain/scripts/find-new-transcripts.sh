@@ -12,8 +12,9 @@
 #             - claude-code/codex: line count of source already consumed
 #             - opencode: unix-ms time_created of the last message consumed
 #
-# Records are emitted GLOBALLY OLDEST-FIRST — ascending by latest-content
-# time (source mtime for file agents, MAX(time_created) for opencode). The
+# Records are emitted GLOBALLY OLDEST-FIRST — ascending by GAP-START time
+# (timestamp at the cursor line for file agents, MAX(time_created) for
+# opencode). The
 # maintenance runbook merges new content into existing wiki entries, so
 # processing order is load-bearing: a newer session processed before an
 # older one lands stale content on top of newer revisions and corrupts the
@@ -63,6 +64,25 @@ read_cursor() {
   fi
 }
 
+# Timestamp (unix seconds) of the first UNPROCESSED line — the line at the
+# cursor — i.e. when this session's still-to-be-extracted content begins.
+# Used as the sort key instead of file mtime so the global oldest-first order
+# interleaves sessions by when their GAP content actually happened: a long
+# session whose gap starts days ago sorts ahead of a short session touched
+# more recently. Falls back to mtime if the cursor line has no timestamp.
+gap_start_key() {
+  local src="$1" cursor="$2" ts
+  # First timestamp in the unprocessed range. Scan a window past the cursor
+  # because the first line(s) can be untimestamped snapshots/attachments.
+  ts=$(sed -n "$((cursor + 1)),$((cursor + 60))p" "$src" 2>/dev/null \
+        | grep -oE '"timestamp":[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+  if [ -n "$ts" ] && date -u -d "$ts" +%s >/dev/null 2>&1; then
+    date -u -d "$ts" +%s
+  else
+    stat -c %Y "$src" 2>/dev/null || echo 0
+  fi
+}
+
 emit_if_new_file() {
   local agent="$1"
   local id="$2"
@@ -74,7 +94,7 @@ emit_if_new_file() {
   [ -z "$lines" ] && lines=0
   if [ "$cursor" -lt "$lines" ]; then
     local key
-    key=$(stat -c %Y "$source" 2>/dev/null || echo 0)
+    key=$(gap_start_key "$source" "$cursor")
     printf "%s\t%s\t%s\t%s\t%s\n" "$key" "$agent" "$id" "$source" "$cursor" >> "$TMP"
   fi
 }
