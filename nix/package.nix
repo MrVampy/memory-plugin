@@ -68,9 +68,9 @@ pkgs.stdenvNoCC.mkDerivation {
     url = "https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz";
     hash = "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==";
   };
-  buildPhase = "${./package.sh} build";
-  checkPhase = "${./package.sh} check";
-  installPhase = "${./package.sh} install";
+  buildPhase = "${pkgs.bash}/bin/bash ${./package.sh} build";
+  checkPhase = "${pkgs.bash}/bin/bash ${./package.sh} check";
+  installPhase = "${pkgs.bash}/bin/bash ${./package.sh} install";
   meta = with lib; {
     description = "Structural validator for a Memory wiki";
     homepage = "https://github.com/MrVampy/memory-plugin";
