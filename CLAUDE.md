@@ -53,6 +53,8 @@ Memory/
 │           ├── scripts/            # Mechanical work (discover, filter, process)
 │           └── references/         # Runbook + entry format + formats + passes
 ├── install.sh                      # Build + install per detected agent
+├── flake.nix                       # Reproducible validator package and checks
+├── nix/package.sh                  # Package lifecycle outside the Nix expression
 ├── gleam.toml                      # Gleam project
 └── test/                           # Gleam tests
 ```
@@ -64,6 +66,8 @@ Memory/
 **When touching the validator**, the rule is: add structural rules, never content rules. "Tags must be non-empty" is structural. "Tags must be lowercase" would be content-level and was deliberately not enforced.
 
 **When touching install.sh**, don't add migration code. The installer should be oriented toward fresh installs. If you need to migrate legacy state from a previous version of the plugin, do it in a separate one-shot script, not inside `install.sh`.
+
+**The validator package belongs here.** Consumers use the package exported by this repository's flake. Keep build logic out of consumer repositories and keep imperative package lifecycle work in the shellchecked `nix/package.sh`, not embedded in a Nix expression.
 
 **When touching skill docs**, don't impose content conventions. The docs describe structure (what the validator enforces) and mechanics (how to use the scripts and tools). What the agent saves, what kind it uses, what namespace it picks — those are the agent's call at runtime.
 

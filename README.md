@@ -57,6 +57,11 @@ bash install.sh --cron-project ~/path/to/project-you-open-regularly
 
 The cron registers in that project's `.claude/scheduled_tasks.json` and fires only when Claude Code is running there. If you don't pass `--cron-project`, skills are still installed — you just won't get automatic hourly maintenance until you re-run with the flag. Everything else works without it.
 
+For a reproducible validator-only package, the repository also exports
+`packages.<system>.memory-validator` through its Nix flake. The package owns
+the complete Gleam and JavaScript runtime closure and runs the validator tests
+and structural fixture during its build.
+
 ## What the installer does
 
 1. Builds the Gleam validator (`gleam build --target javascript`)
@@ -167,6 +172,8 @@ Memory/
 │           ├── scripts/            Discover / filter / process / validate (bash + python)
 │           └── references/         Runbook, entry format, transcript formats, maintenance passes
 ├── install.sh                      One-command install
+├── flake.nix                       Reproducible validator package and checks
+├── nix/package.sh                  Package lifecycle outside the Nix expression
 ├── gleam.toml                      Gleam project
 └── test/                           Gleam tests
 ```
