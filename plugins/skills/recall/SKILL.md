@@ -1,81 +1,46 @@
 ---
 name: recall
-description: THIS IS YOUR PERSISTENT MEMORY. You have no long-term memory across sessions — anything the user has told you, decided with you, or asked you to remember lives at ~/.memory/wiki/ as markdown files with YAML frontmatter. ALWAYS search this directory at the start of any task touching a topic the user might have prior context on (facts about themselves, technical decisions, project history, preferences). Use your content-search tool (grep / ripgrep) against ~/.memory/wiki/, your filename-pattern tool (glob) for namespace browsing like ~/.memory/wiki/namespace.*.md, and your file-read tool for full entries. The cost of checking unnecessarily is small; the cost of acting on incomplete context is large.
-argument-hint: "[search terms]"
+description: Consult the user's namespace-native Memory service for prior decisions, preferences, project history, and personal context. Always use this before acting on a topic that may have prior context. Search and read through the local `memory` 9P projection with r9p, follow wiki links when relevant, and cite entry IDs in the response.
 ---
 
-# Recall is agent-driven via your native tools
+# Recall persistent context
 
-There are no MCP tools or hooks for recall. You use your existing native filesystem
-tools — whatever your platform calls them — directly against `~/.memory/wiki/`.
-You decide when to query based on the task. Reads are unrestricted by design.
+Use the private `memory` service projected into `$NAMESPACE`. Do not read a
+host-local `~/.memory` directory and do not look for service endpoints,
+certificates, or host addresses.
 
-The exact tool names vary by platform. Most coding agents have something equivalent
-to:
+## Discover relevant entries
 
-- A **content-search tool** (grep / ripgrep) — searches file contents by regex,
-  optionally scoped to a directory
-- A **filename-pattern tool** (glob) — lists files matching a pattern like `*.md`
-- A **file-read tool** — reads a file's contents by path
+1. Read `memory/status` and confirm that the service is ready.
+1. Search with a bounded same-fid RPC to `memory/wiki/search`:
 
-Use whichever ones your platform exposes. If unsure of the exact names, list your
-available tools and look for ones with these capabilities.
+   ```json
+   {
+     "schema_id": "memory-wiki-search-request.v1",
+     "query": "distinctive literal text",
+     "limit": 20
+   }
+   ```
 
-# How to find entries
+   Write valid JSON to a private temporary file, run
+   `r9p rpc memory/wiki/search < REQUEST_FILE`, and remove the temporary file.
+   Use several distinctive queries when one term is ambiguous.
+1. Browse `r9p read memory/wiki/index` when an ID prefix or namespace is more
+   useful than content search.
+1. Read a match with `r9p read memory/wiki/entries/ENTRY_ID`.
+1. Follow relevant `[[linked.entry.id]]` references by reading those entry IDs.
 
-Pick the right operation for the question:
+Search results contain global namespace paths for discovery. Inside the private
+projection, address entries with the stable local form
+`memory/wiki/entries/ENTRY_ID`.
 
-**By keyword in content** (the most common case):
+## Use recalled knowledge
 
-Search the wiki directory with your grep/ripgrep tool, e.g. searching for the
-keyword `MBTI` in `~/.memory/wiki/`. Returns matching file paths. Use distinctive
-terms — searching for `MBTI` is better than searching for `type`. Add follow-up
-searches for refinement.
+- Cite each relied-on entry ID so the user can identify the source.
+- Surface conflicting entries instead of silently choosing one.
+- If an entry appears stale, explain the discrepancy. Use the `create` skill
+  only when the user explicitly asks for a persistent correction.
+- If search produces no useful result, proceed honestly without claiming to
+  remember the topic.
 
-**By tag**:
-
-Tags live in the YAML frontmatter as block-style list items (`- tagname` lines).
-Search for `- tagname` in `~/.memory/wiki/` to find entries by tag.
-
-**By namespace** (browse a topic area):
-
-The wiki uses dot-notation ids, so namespace prefixes work like directories.
-Glob `~/.memory/wiki/<prefix>.*.md` where `<prefix>` is whatever namespace
-prefix you're interested in. If you don't know what namespaces exist,
-glob `~/.memory/wiki/*.md` first and look at the id prefixes.
-
-**By id** (when you already know it from a search hit or a link):
-
-Read the file directly at `~/.memory/wiki/<id>.md`.
-
-**Listing everything**:
-
-Glob `~/.memory/wiki/*.md`.
-
-# How to follow links
-
-Wiki entries reference each other with `[[other.entry.id]]` in the body and as
-`{target, label}` pairs in the frontmatter `links` list. After reading one entry,
-read the entries linked from it. The frontmatter `links` array shows you why each
-link exists (the `label` field) so you can decide whether to follow without
-opening the target.
-
-# Discovery workflow at the start of a task
-
-1. **Search by keyword** — grep/ripgrep `~/.memory/wiki/` for the primary topic word
-2. **If hits look promising** — read the most relevant entries in full
-3. **Follow links** — read entries linked from the matches
-4. **If no hits** — try a different keyword, or glob a likely namespace prefix
-5. **If still nothing** — it's safe to proceed without prior context, but you tried
-
-# What to do with what you find
-
-- **Cite the entry id** when referencing recalled knowledge so the user knows the source
-- **If a recalled entry seems wrong or outdated** and the user wants it changed, use the `create` skill to update it (native Write + `memory validate`) — don't just work around stale information
-- **If two entries cover the same topic with conflicting info**, surface the conflict to the user
-
-# What NOT to do
-
-- **Don't skip the check because the question seems simple.** Simple questions often have prior context you don't have in your weights — the user may have already told you the answer in a previous session.
-- **Don't pretend you "remember" something** — recall it explicitly so the user can verify the source.
-- **Don't write to the wiki without running `memory validate` after.** The validator is the single gate on the wiki's consistency — see the `create` skill for the write workflow.
+Never mutate Memory during recall.

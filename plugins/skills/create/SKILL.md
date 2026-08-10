@@ -1,120 +1,72 @@
 ---
 name: create
-description: Explicit memory writes — call ONLY when the user directly asks you to remember, update, or delete something in persistent memory. Examples of triggers - "remember that I prefer X", "save this decision", "stop remembering Y", "update the entry about Z". You do NOT save proactively — a scheduled maintenance subagent processes session transcripts into the wiki on its own cycle. Use native Read/Edit/Write/Bash-rm on ~/.memory/wiki/ and always run `memory validate` after any change.
-argument-hint: "[what to remember/update/delete]"
+description: Create, update, or delete persistent Memory entries only when the user explicitly asks to remember, save, update, forget, or delete something. Search and read through the local `memory` 9P projection, then submit one head-bound typed mutation to Memory. Never write a host-local wiki or save proactively.
 ---
 
-# Explicit memory writes
+# Apply an explicit Memory mutation
 
-This skill is for **explicit user-requested** memory operations only. If the user says *"remember that X"*, *"save this"*, *"update the entry about Y"*, *"delete the memory about Z"* — that's this skill.
+Use this skill only for a direct user request to change persistent memory.
+Automatic transcript maintenance belongs to the Memory service and is not a
+reason to invoke this skill.
 
-**Do NOT use this skill to proactively save things.** Proactive capture of conversation content is handled by a scheduled maintenance subagent that runs on its own cycle. Your job here is only to respond to explicit user requests for memory writes.
+Use the private `memory` service projected into `$NAMESPACE`. Do not edit
+`~/.memory`, invoke Git, run the validator directly, or discover service
+endpoints and credentials. Memory owns validation, atomic application, Git
+history, and publication.
 
-## Toolbox
+## Prepare the mutation
 
-The memory system has exactly one custom tool: **`memory validate`**, a Bash CLI that validates the wiki at `~/.memory/wiki/`. Everything else uses your native tools:
+1. Read `memory/status` and retain its exact `repository_head`.
+1. Search `memory/wiki/search` and read related entries before creating a new
+   ID. Prefer updating the existing entry that owns the subject.
+1. For an update, preserve `meta.created`, update `meta.updated`, and append the
+   current session identifier to `meta.sources` when one is available.
+1. Before deleting an entry, search for the literal `[[ENTRY_ID]]`. Update or
+   remove inbound links in the same atomic mutation, or ask the user when the
+   intended repair is ambiguous.
+1. Compose complete replacement contents for every upsert. Entry filenames and
+   frontmatter IDs use the same dot-notation ID.
 
-- **Read** — inspect an existing entry before updating
-- **Edit** — modify an existing entry in place
-- **Write** — create a new entry or overwrite an existing one
-- **Grep / Glob** — find related entries before writing (avoid duplicates)
-- **Bash `rm`** — delete an entry
-- **Bash `memory validate`** — the gate. Run after every mutation.
+## Submit one atomic request
 
-Never skip the validate step. If validation fails, fix the entry and re-validate until clean.
+Write one valid JSON document to a private temporary file:
 
-## Workflow by operation
-
-### Create a new entry
-
-1. **Search first:** grep `~/.memory/wiki/` for related topics — an existing entry you should update instead of duplicating.
-2. **Compose the markdown** in memory. See `## Entry format` below for the shape.
-3. **Write** the file to `~/.memory/wiki/<id>.md` using the Write tool.
-4. **Validate:** run `memory validate` via Bash.
-5. **If errors:** read the errors, Edit the file to fix them, validate again. Repeat until clean.
-
-### Update an existing entry
-
-1. **Read** the existing entry at `~/.memory/wiki/<id>.md`.
-2. **Edit** in place with the Edit tool, or Write the full replacement.
-3. **Update `meta.updated`** to the current ISO timestamp.
-4. **Add the current session id** to `meta.sources` (append, don't replace).
-5. **Validate:** `memory validate`. Fix errors if any.
-
-### Delete an entry
-
-1. **Check for inbound links** before deleting: grep `~/.memory/wiki/` for `[[<id>]]` references. Any hits mean another entry will be broken by the delete.
-2. **If links exist:** either fix the linking entries first (remove the references) or confirm with the user that they want the links broken.
-3. **Delete:** `rm ~/.memory/wiki/<id>.md` via Bash.
-4. **Validate:** `memory validate`. If errors (you missed an inbound link), either restore the entry from memory (you should have Read it first) or clean up the newly-broken linkers.
-
-The "always grep for inbound links before deleting" step is your safety net — the validator only catches the problem *after* the fact, and by then the file is gone.
-
-## Entry format
-
-Every wiki entry is markdown with YAML frontmatter:
-
-```markdown
----
-id: namespace.entry-name
-title: "Human readable title"
-kind: design-decision
-tags:
-  - tag1
-  - tag2
-  - tag3
-links:
-  - target: other.entry.id
-    label: why this links to that
-meta:
-  created: "2026-04-09T10:00:00"
-  updated: "2026-04-11T12:00:00"
-  sources:
-    - <previous-sources>
-    - <current-session-id>
----
-
-# Section heading
-
-Body text with [[other.entry.id]] inline references that must match the
-frontmatter `links` entries.
+```json
+{
+  "schema_id": "memory-entry-mutation-request.v1",
+  "expected_head": "EXACT_HEAD_FROM_STATUS",
+  "upserts": [
+    {
+      "id": "namespace.entry-id",
+      "content": "complete markdown entry"
+    }
+  ],
+  "deletions": [
+    {
+      "id": "namespace.retired-entry"
+    }
+  ]
+}
 ```
 
-### Validator rules (the validator will reject violations)
+Omit neither array; use an empty array for the unused operation kind. Submit it
+with `r9p rpc memory/ctl/entries < REQUEST_FILE`, then remove the temporary
+file.
 
-1. **Required top-level fields:** `id`, `title`, `kind`, `tags`, `links`, `meta`.
-2. **IDs contain at least one dot** (dot-notation). Filename must match `<id>.md`.
-3. **Tags must parse as a block-style YAML list** — one per line, indented with `- `. Flow-style `[a, b]` is rejected by the parser.
-4. **Tags must be non-empty strings without spaces.** That's the only content constraint.
-5. **Bidirectional link integrity:** every `[[ref]]` in the body has a matching entry in `links`, and every `links[].target` has a matching `[[ref]]` in the body.
-6. **Every `links[].target` resolves to an existing entry.**
-7. **Every link has a non-empty `label`.**
-8. **Required meta fields:** `meta.created`, `meta.updated`, `meta.sources` (list).
-9. **Timestamps are quoted ISO 8601 strings.**
+A successful `memory-entry-mutation-result.v1` reports `applied` or
+`no_change`, the resulting head, and publication state. Report the affected
+entry IDs to the user. If publication failed after a local commit, say so
+without pretending the mutation was rejected.
 
-Everything else is free. The validator doesn't care about tag case, title wording, `kind` value, namespace choice, or body structure. Those are the creator's call.
+## Resolve ambiguity safely
 
-When updating an existing entry, **keep the original `meta.created`** and only update `meta.updated`. This is a provenance convention, not a validator rule.
+- On a stale-head rejection, read status and all affected entries again,
+  deliberately rebase the intended semantic change, and submit a newly bound
+  request.
+- If delivery is unknown, do not replay blindly. Read status and the affected
+  entries first to determine whether the mutation committed.
+- If Memory rejects validation, fix the complete proposed entries and submit a
+  new request. Never bypass the service gate.
 
-## What NOT to do
-
-- **Don't proactively save things** that "seem interesting" during a conversation. The scheduled maintenance subagent handles automatic capture. Only save what the user explicitly asks you to save.
-- **Don't skip the grep-for-existing step.** Duplicate entries under different ids are painful to clean up later.
-- **Don't delete without checking inbound links first.** The validator catches it post-hoc, but by then you've already broken things.
-- **Don't write anything to `~/.memory/wiki/` without validating immediately after.**
-- **Don't spawn a subagent for this.** Explicit user-requested writes are fast — do them in the main thread. The maintenance flow uses subagents because it batches across many entries.
-
-## A typical interaction
-
-User: *"Remember that I prefer X."*
-
-Agent:
-
-1. Grep `~/.memory/wiki/` for terms related to X — find any existing entries that might already cover it.
-2. Read the most relevant candidate. Update it if it fits; compose a new entry if nothing does.
-3. Write the entry via the Write tool.
-4. Run `memory validate` via Bash.
-5. If clean, report the entry id to the user.
-6. If the validator reports errors, fix and retry.
-
-One turn, a handful of tool calls, the knowledge is now durable.
+Do not save facts merely because they appear useful. Explicit user intent is
+required.

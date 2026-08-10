@@ -27,6 +27,17 @@
         };
     in
     {
+      lib.skills = {
+        create = builtins.path {
+          path = ./plugins/skills/create;
+          name = "memory-create-skill";
+        };
+        recall = builtins.path {
+          path = ./plugins/skills/recall;
+          name = "memory-recall-skill";
+        };
+      };
+
       packages = forAllSystems (system: {
         default = mkValidator system;
         memory-validator = mkValidator system;
