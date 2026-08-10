@@ -59,8 +59,8 @@ The cron registers in that project's `.claude/scheduled_tasks.json` and fires on
 
 For a reproducible validator-only package, the repository also exports
 `packages.<system>.memory-validator` through its Nix flake. The package owns
-the complete Gleam and JavaScript runtime closure and runs the validator tests
-and structural fixture during its build.
+the complete Gleam and JavaScript runtime closure and runs the validator tests,
+shell package check, and structural fixture during its build.
 
 ## What the installer does
 
@@ -173,7 +173,7 @@ Memory/
 │           └── references/         Runbook, entry format, transcript formats, maintenance passes
 ├── install.sh                      One-command install
 ├── flake.nix                       Reproducible validator package and checks
-├── nix/package.sh                  Package lifecycle outside the Nix expression
+├── nix/                            Declarative package inputs + external lifecycle
 ├── gleam.toml                      Gleam project
 └── test/                           Gleam tests
 ```

@@ -54,7 +54,7 @@ Memory/
 │           └── references/         # Runbook + entry format + formats + passes
 ├── install.sh                      # Build + install per detected agent
 ├── flake.nix                       # Reproducible validator package and checks
-├── nix/package.sh                  # Package lifecycle outside the Nix expression
+├── nix/                            # Declarative package inputs + external lifecycle
 ├── gleam.toml                      # Gleam project
 └── test/                           # Gleam tests
 ```
