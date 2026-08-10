@@ -33,15 +33,17 @@ case ${1:-} in
     gleam test --target javascript
     ;;
   install)
+    output=${2:?}
+    source_root=${3:?}
     main=${MEMORY_MAIN:?}
     node=${MEMORY_NODE:?}
-    mkdir -p "$out/bin" "$out/lib/memory-validator"
-    cp -R build/dev/javascript/. "$out/lib/memory-validator/"
-    install -Dm644 "$main" "$out/lib/memory-validator/main.mjs"
-    install_runtime_dependencies "$out/lib/memory-validator"
-    makeWrapper "$node" "$out/bin/memory" \
-      --add-flags "$out/lib/memory-validator/main.mjs"
-    "$out/bin/memory" validate "$src/test/fixtures/valid"
+    mkdir -p "$output/bin" "$output/lib/memory-validator"
+    cp -R build/dev/javascript/. "$output/lib/memory-validator/"
+    install -Dm644 "$main" "$output/lib/memory-validator/main.mjs"
+    install_runtime_dependencies "$output/lib/memory-validator"
+    makeWrapper "$node" "$output/bin/memory" \
+      --add-flags "$output/lib/memory-validator/main.mjs"
+    "$output/bin/memory" validate "$source_root/test/fixtures/valid"
     ;;
   *)
     printf 'usage: %s build|check|install\n' "$0" >&2

@@ -70,7 +70,9 @@ pkgs.stdenvNoCC.mkDerivation {
   };
   buildPhase = "${pkgs.bash}/bin/bash ${./package.sh} build";
   checkPhase = "${pkgs.bash}/bin/bash ${./package.sh} check";
-  installPhase = "${pkgs.bash}/bin/bash ${./package.sh} install";
+  installPhase = ''
+    ${pkgs.bash}/bin/bash ${./package.sh} install "$out" "$src"
+  '';
   meta = with lib; {
     description = "Structural validator for a Memory wiki";
     homepage = "https://github.com/MrVampy/memory-plugin";
