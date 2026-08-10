@@ -1,6 +1,5 @@
 /// Validation rules for the wiki.
 /// Operates on a list of parsed entries, checks structural integrity.
-
 import gleam/dict
 import gleam/list
 import gleam/string
@@ -121,7 +120,9 @@ fn check_link_consistency(entries: List(Entry)) -> List(ValidationError) {
           False ->
             Ok(LinkMismatch(
               entry_id: e.id,
-              reason: "'" <> target <> "' in frontmatter links but not [[referenced]] in body",
+              reason: "'"
+                <> target
+                <> "' in frontmatter links but not [[referenced]] in body",
             ))
         }
       })
@@ -151,16 +152,28 @@ fn check_tags(entries: List(Entry)) -> List(ValidationError) {
 fn check_id_format(entries: List(Entry)) -> List(ValidationError) {
   list.flat_map(entries, fn(e) {
     let id_errors = case string.contains(e.id, ".") {
-      False ->
-        [InvalidId(entry_id: e.id, reason: "id must use dot-notation namespace (e.g. 'domain.name')")]
+      False -> [
+        InvalidId(
+          entry_id: e.id,
+          reason: "id must use dot-notation namespace (e.g. 'domain.name')",
+        ),
+      ]
       True -> []
     }
 
     let expected_filename = e.id <> ".md"
     let filename_errors = case e.file_path == expected_filename {
       True -> []
-      False ->
-        [InvalidId(entry_id: e.id, reason: "id '" <> e.id <> "' does not match filename '" <> e.file_path <> "'")]
+      False -> [
+        InvalidId(
+          entry_id: e.id,
+          reason: "id '"
+            <> e.id
+            <> "' does not match filename '"
+            <> e.file_path
+            <> "'",
+        ),
+      ]
     }
 
     list.flatten([id_errors, filename_errors])

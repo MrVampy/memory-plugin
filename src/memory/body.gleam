@@ -1,5 +1,4 @@
 /// Body parser — extract [[refs]] from markdown body text.
-
 import gleam/list
 import gleam/string
 

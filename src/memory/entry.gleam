@@ -1,6 +1,5 @@
 /// Wiki entry types — the structural schema.
 /// Gleam enforces the shape; the LLM decides the content.
-
 pub type Entry {
   Entry(
     id: String,
@@ -43,18 +42,15 @@ pub fn format_error(error: ValidationError) -> String {
       id <> ": broken link → '" <> target <> "' (entry does not exist)"
     DuplicateId(id, files) ->
       "duplicate id '" <> id <> "' in: " <> string_join(files, ", ")
-    LinkMismatch(id, reason) ->
-      id <> ": link mismatch → " <> reason
+    LinkMismatch(id, reason) -> id <> ": link mismatch → " <> reason
     EmptyLabel(id, target) ->
       id <> ": empty label for link → '" <> target <> "'"
     InvalidTimestamp(id, field, value) ->
       id <> ": invalid timestamp in '" <> field <> "': " <> value
     InvalidTag(id, tag) ->
       id <> ": invalid tag '" <> tag <> "' (must be non-empty lowercase slug)"
-    InvalidId(id, reason) ->
-      id <> ": invalid id → " <> reason
-    ParseError(file, reason) ->
-      file <> ": parse error → " <> reason
+    InvalidId(id, reason) -> id <> ": invalid id → " <> reason
+    ParseError(file, reason) -> file <> ": parse error → " <> reason
   }
 }
 

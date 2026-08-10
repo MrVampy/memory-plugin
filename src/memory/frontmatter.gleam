@@ -1,6 +1,5 @@
 /// YAML frontmatter parser using yay (pure Gleam YAML parser).
 /// Splits markdown into frontmatter + body, parses frontmatter into Entry.
-
 import gleam/result
 import gleam/string
 import memory/entry.{type Entry, type Link, Entry, Link, Meta}

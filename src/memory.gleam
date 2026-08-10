@@ -6,7 +6,6 @@
 /// tools (Read, Edit, Write, Bash `rm`, Grep, Glob) with the validator
 /// as the single gate. This is the "one tool, everything else native"
 /// design — see `plugins/skills/` for the skills that drive it.
-
 import argv
 import gleam/int
 import gleam/io
@@ -25,7 +24,9 @@ pub fn main() {
 
 fn usage() -> Nil {
   io.println("Usage:")
-  io.println("  memory validate [path]    Validate wiki entries (default: $MEMORY_HOME/wiki or ~/.memory/wiki)")
+  io.println(
+    "  memory validate [path]    Validate wiki entries (default: $MEMORY_HOME/wiki or ~/.memory/wiki)",
+  )
 }
 
 fn run_validate(path: String) -> Nil {

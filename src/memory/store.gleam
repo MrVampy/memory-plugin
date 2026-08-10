@@ -1,5 +1,4 @@
 /// File I/O — scan wiki directory, read and parse entries.
-
 import gleam/list
 import gleam/string
 import memory/entry.{type Entry, type ValidationError, ParseError}
@@ -22,10 +21,12 @@ pub fn read_wiki(
         list.map(md_files, fn(filename) {
           let path = dir <> "/" <> filename
           case simplifile.read(path) {
-            Error(_) -> Error(ParseError(file: filename, reason: "cannot read file"))
+            Error(_) ->
+              Error(ParseError(file: filename, reason: "cannot read file"))
             Ok(content) -> {
               case frontmatter.parse_file(content, filename) {
-                Error(reason) -> Error(ParseError(file: filename, reason: reason))
+                Error(reason) ->
+                  Error(ParseError(file: filename, reason: reason))
                 Ok(entry) -> Ok(entry)
               }
             }
