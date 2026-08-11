@@ -36,6 +36,10 @@
           path = ./plugins/skills/recall;
           name = "memory-recall-skill";
         };
+        maintain = builtins.path {
+          path = ./plugins/skills/maintain;
+          name = "memory-maintain-skill";
+        };
       };
 
       packages = forAllSystems (system: {
