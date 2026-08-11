@@ -16,12 +16,15 @@ service and a coherent read-only filesystem below `$NAMESPACE`.
   admitted Memory filesystem.
 - `plugins/skills/create` submits an explicit, head-bound, atomic mutation when
   the user directly asks to change persistent memory.
+- `plugins/skills/maintain` preserves the established transcript-extraction and
+  semantic-cleanup method for the dedicated Memory reasoning profile. It reads
+  the complete admitted wiki and returns a bounded typed proposal to Memory.
 - `plugins/agents-md-snippet.md` is the small provider-neutral instruction
   block profiles may incorporate.
 
-Automatic transcript ingestion and maintenance are service responsibilities.
-There is no scheduled agent-side maintenance skill, local wiki installer, or
-provider-specific hook.
+Automatic transcript ingestion, ordering, scheduling, validation, commit, and
+publication are service responsibilities. There is no agent-side scheduler,
+local wiki installer, direct-write maintenance path, or provider-specific hook.
 
 ## Namespace contract used by the skills
 
@@ -53,6 +56,7 @@ The flake exports:
 - `checks.<system>.memory-validator`
 - `lib.skills.recall`
 - `lib.skills.create`
+- `lib.skills.maintain`
 
 Profile repositories pin this flake and place the exported skill trees in the
 harness-native `.codex/skills` or `.claude/skills` directory. The skills have
