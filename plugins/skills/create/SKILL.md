@@ -1,6 +1,6 @@
 ---
 name: create
-description: Create, update, or delete persistent Memory entries only when the user explicitly asks to remember, save, update, forget, or delete something. Search and read through the local `memory` 9P projection, then submit one head-bound typed mutation to Memory. Never write a host-local wiki or save proactively.
+description: Create, update, or delete persistent Memory entries only when the user explicitly asks to remember, save, update, forget, or delete something. Search and read through the admitted Memory filesystem, then submit one head-bound typed mutation through the local `memory` service. Never write a host-local wiki or save proactively.
 ---
 
 # Apply an explicit Memory mutation
@@ -17,13 +17,14 @@ history, and publication.
 ## Prepare the mutation
 
 1. Read `memory/status` and retain its exact `repository_head`.
-1. Search `memory/wiki/search` and read related entries before creating a new
-   ID. Prefer updating the existing entry that owns the subject.
+1. Search `$NAMESPACE/fs/memory` with native `rg` and read related `.md` files
+   before creating a new ID. Prefer updating the existing entry that owns the
+   subject.
 1. For an update, preserve `meta.created`, update `meta.updated`, and append the
    current session identifier to `meta.sources` when one is available.
-1. Before deleting an entry, search for the literal `[[ENTRY_ID]]`. Update or
-   remove inbound links in the same atomic mutation, or ask the user when the
-   intended repair is ambiguous.
+1. Before deleting an entry, use `rg --fixed-strings '[[ENTRY_ID]]'
+   "$NAMESPACE/fs/memory"`. Update or remove inbound links in the same atomic
+   mutation, or ask the user when the intended repair is ambiguous.
 1. Compose complete replacement contents for every upsert. Entry filenames and
    frontmatter IDs use the same dot-notation ID.
 

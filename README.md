@@ -6,13 +6,14 @@ for the namespace-native Memory system.
 The live wiki is owned by a configured Memory service instance. Agents do not
 receive a copied wiki directory, a service endpoint, or credentials. Their
 runtime projects one authenticated Memory subtree as the local `memory` 9P
-service below `$NAMESPACE`.
+service and a coherent read-only filesystem below `$NAMESPACE`.
 
 ## Components
 
 - `memory validate` checks the structure and link integrity of a complete wiki
   tree. The Memory service invokes it before committing any mutation.
-- `plugins/skills/recall` searches and reads Memory with r9p.
+- `plugins/skills/recall` uses native grep, glob, and file reads through the
+  admitted Memory filesystem.
 - `plugins/skills/create` submits an explicit, head-bound, atomic mutation when
   the user directly asks to change persistent memory.
 - `plugins/agents-md-snippet.md` is the small provider-neutral instruction
@@ -28,20 +29,21 @@ The runtime exposes one stable local service name:
 
 ```text
 $NAMESPACE/memory
+$NAMESPACE/fs/memory
 ```
 
 Useful operations are:
 
 ```text
 r9p read memory/status
-r9p read memory/wiki/index
-r9p read memory/wiki/entries/ENTRY_ID
-r9p rpc memory/wiki/search
+rg --glob '*.md' QUERY "$NAMESPACE/fs/memory"
+rg --files "$NAMESPACE/fs/memory"
 r9p rpc memory/ctl/entries
 ```
 
 The runtime supervisor retains all remote addressing and authentication
-material. Skills use only these local paths.
+material. The filesystem is read-only and cache-coherent through Memory's
+blocking namespace change feed. Skills use only these local surfaces.
 
 ## Nix outputs
 
