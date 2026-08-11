@@ -62,7 +62,9 @@ Every entry is one flat `<id>.md` file. The validator enforces:
 
 1. Required top-level fields: `id`, `title`, `kind`, `tags`, `links`, and
    `meta`.
-1. A dot-notation ID that matches the filename.
+1. A 3-240 character dot-notation ID that starts with a lowercase ASCII
+   letter, uses only lowercase ASCII letters, digits, `.`, `-`, and `_`, has
+   no empty namespace segment, and matches the filename.
 1. Block-style, non-empty tags without spaces.
 1. Bidirectional agreement between body `[[entry.id]]` references and
    frontmatter links.

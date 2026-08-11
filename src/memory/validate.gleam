@@ -151,14 +151,14 @@ fn check_tags(entries: List(Entry)) -> List(ValidationError) {
 /// Check that entry IDs use dot-notation namespaces and match filenames.
 fn check_id_format(entries: List(Entry)) -> List(ValidationError) {
   list.flat_map(entries, fn(e) {
-    let id_errors = case string.contains(e.id, ".") {
+    let id_errors = case valid_entry_id(e.id) {
+      True -> []
       False -> [
         InvalidId(
           entry_id: e.id,
-          reason: "id must use dot-notation namespace (e.g. 'domain.name')",
+          reason: "id must be a 3-240 character dot-notation identifier using lowercase ASCII letters, digits, '.', '-', or '_'",
         ),
       ]
-      True -> []
     }
 
     let expected_filename = e.id <> ".md"
@@ -178,6 +178,21 @@ fn check_id_format(entries: List(Entry)) -> List(ValidationError) {
 
     list.flatten([id_errors, filename_errors])
   })
+}
+
+fn valid_entry_id(id: String) -> Bool {
+  case string.to_graphemes(id) {
+    [first, ..rest] ->
+      string.length(id) >= 3
+      && string.length(id) <= 240
+      && string.contains("abcdefghijklmnopqrstuvwxyz", first)
+      && list.all(rest, fn(character) {
+        string.contains("abcdefghijklmnopqrstuvwxyz0123456789._-", character)
+      })
+      && string.contains(id, ".")
+      && !string.contains(id, "..")
+    [] -> False
+  }
 }
 
 /// Build a set of all entry ids for lookup.

@@ -1,7 +1,7 @@
 import gleam/list
 import gleeunit
 import memory/entry.{
-  type Entry, type Link, BrokenLink, Entry, Link, LinkMismatch, Meta,
+  type Entry, type Link, BrokenLink, Entry, InvalidId, Link, LinkMismatch, Meta,
 }
 import memory/frontmatter
 import memory/validate
@@ -43,6 +43,35 @@ pub fn rejects_body_and_frontmatter_link_drift_test() {
   )
 }
 
+pub fn accepts_underscores_in_a_safe_entry_id_test() {
+  let entry = fixture_entry_with_id("lang.rust.to_string")
+  assert validate.validate_all([entry]) == []
+}
+
+pub fn rejects_unsafe_entry_id_characters_test() {
+  let entry = fixture_entry_with_id("lang.rust/to_string")
+  let errors = validate.validate_all([entry])
+  assert list.contains(
+    errors,
+    InvalidId(
+      entry_id: "lang.rust/to_string",
+      reason: "id must be a 3-240 character dot-notation identifier using lowercase ASCII letters, digits, '.', '-', or '_'",
+    ),
+  )
+}
+
+pub fn rejects_empty_namespace_segments_test() {
+  let entry = fixture_entry_with_id("lang..rust")
+  let errors = validate.validate_all([entry])
+  assert list.contains(
+    errors,
+    InvalidId(
+      entry_id: "lang..rust",
+      reason: "id must be a 3-240 character dot-notation identifier using lowercase ASCII letters, digits, '.', '-', or '_'",
+    ),
+  )
+}
+
 fn fixture_entry(links: List(Link), body: String) -> Entry {
   Entry(
     id: "test.source",
@@ -57,5 +86,22 @@ fn fixture_entry(links: List(Link), body: String) -> Entry {
     ),
     body: body,
     file_path: "test.source.md",
+  )
+}
+
+fn fixture_entry_with_id(id: String) -> Entry {
+  Entry(
+    id: id,
+    title: "Source",
+    kind: "fixture",
+    tags: ["test"],
+    links: [],
+    meta: Meta(
+      created: "2026-08-10T00:00:00",
+      updated: "2026-08-10T00:00:00",
+      sources: ["test"],
+    ),
+    body: "Fixture.",
+    file_path: id <> ".md",
   )
 }
