@@ -21,6 +21,10 @@ The complete current wiki is available read-only at
 `$NAMESPACE/fs/memory`. Use `rg`, `rg --files`, and ordinary file reads there.
 The corpus is the authority for its own namespaces and content conventions.
 
+Run every tool and command in the foreground and wait for it to finish before
+continuing. Never use background execution or return while a search, read, or
+other tool call is still running.
+
 Return only the typed proposal requested by the workflow. Do not write through
 the filesystem, call Memory mutation RPCs, run Git, advance a source cursor,
 schedule another task, or spawn a subagent. Memory alone validates and commits
