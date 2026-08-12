@@ -1,14 +1,15 @@
 ---
 name: maintain
-description: Execute one service-submitted Memory transcript extraction, semantic maintenance, or structural-repair task. Use only in the dedicated Memory reasoning profile when the prompt supplies a memory-maintenance-input.v2 or memory-maintenance-repair-input.v2 envelope. Search the complete admitted wiki, preserve the established maintenance judgment, and return one bounded memory-maintenance-plan.v1 proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
+description: Execute one service-submitted bounded Memory maintenance pass or structural-repair task. Use only in the dedicated Memory reasoning profile when the prompt supplies a memory-maintenance-input.v3 or memory-maintenance-repair-input.v2 envelope. Process every supplied transcript span oldest-first, run the longer-cycle semantic passes when requested, search the complete admitted wiki, preserve the established maintenance judgment, and return one bounded memory-maintenance-plan.v1 proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
 ---
 
 # Memory maintenance executor
 
 You are the maintenance executor. Memory has already admitted and normalized
-the source data, chosen the oldest queued task, and bound this run to one wiki
-head. Read [references/workflow.md](references/workflow.md) completely and
-follow it exactly.
+the source data, assembled the established oldest-first per-run budget, and
+bound this run to one wiki head. Read
+[references/workflow.md](references/workflow.md) completely and follow it
+exactly.
 
 Read these references when the workflow routes you to them:
 
