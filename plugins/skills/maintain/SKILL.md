@@ -19,12 +19,13 @@ Read these references when the workflow routes you to them:
   semantic-maintenance task.
 
 The complete current wiki is available read-only at
-`$NAMESPACE/fs/memory`. Use `rg --files` only to enumerate the projected entry
-files, `$HOME/.local/bin/memory-wiki-search` for every content, source, title,
-tag, link, or topic search, and ordinary file reads for the returned entry IDs.
-The search command uses Memory's admitted local namespace session; it does not
-dial a service endpoint. The corpus is the authority for its own namespaces
-and content conventions.
+`$NAMESPACE/fs/memory`. Navigate it exactly like an ordinary local code tree:
+use the provider's native Glob tool to find entry files, native Grep tool to
+search content, sources, titles, tags, links, and topics, and native Read tool
+to read plausible entries in full. Do not use a Memory-specific search client
+or RPC for corpus navigation. The filesystem projection is the agent-native
+read surface, and the corpus is the authority for its own namespaces and
+content conventions.
 
 Run every tool and command in the foreground and wait for it to finish before
 continuing. Never use background execution or return while a search, read, or
