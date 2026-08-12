@@ -68,7 +68,7 @@ representing as durable knowledge. This is a judgment call. The skill does not
 impose a fixed ontology, list of approved topics, namespace vocabulary, or
 kind values. Accumulate one coherent final mutation set across the complete
 pass; when later spans extend an entry changed by an earlier span, compose the
-final replacement entry rather than emitting duplicate upserts.
+final set of exact edits rather than emitting duplicate mutations.
 
 For each durable item:
 
@@ -104,10 +104,21 @@ Return exactly one compact JSON object with this shape:
 ```json
 {
   "schema_id": "memory-maintenance-plan",
-  "upserts": [
+  "creates": [
     {
       "id": "namespace.entry-id",
       "content": "one complete markdown entry"
+    }
+  ],
+  "edits": [
+    {
+      "id": "namespace.existing-entry",
+      "replacements": [
+        {
+          "old_text": "exact unique text from the original entry",
+          "new_text": "complete replacement for that exact text"
+        }
+      ]
     }
   ],
   "deletions": [
@@ -120,15 +131,27 @@ Return exactly one compact JSON object with this shape:
 
 Rules:
 
-- Each upsert is a complete replacement entry, not a patch or excerpt.
-- Every changed existing entry and every deletion must name an entry that
-  exists in the read-only wiki used for this run.
+- Each create is one complete new entry. A create ID must not already exist.
+- Change every existing entry through one edit. Never reproduce a complete
+  existing entry in the proposal merely to update part of it.
+- Each replacement's `old_text` must be nonempty, copied exactly from the
+  original entry at the bound head, and occur exactly once in that entry. Use
+  the shortest context that is still unique. `new_text` is the complete text
+  that replaces that occurrence and may be empty.
+- All replacements in one edit bind independently to the original entry, not
+  to the result of an earlier replacement. They must not overlap. Compose
+  changes that touch the same region into one replacement.
+- Every edit and deletion must name an entry that exists in the read-only wiki
+  used for this run.
 - A new ID must satisfy the validator grammar documented in the entry-format
   reference.
 - Serialize the complete object compactly and keep its UTF-8 byte length at or
-  below the envelope's exact `maximum_proposal_bytes`. Prefer a small coherent
-  change over a broad shallow rewrite. Never truncate an entry or emit a
-  partial replacement to fit the bound.
+  below the envelope's exact `maximum_proposal_bytes`. Compact edits exist so
+  even a very large existing entry can be updated without returning all of its
+  unchanged bytes. Never truncate content, omit a durable change after deciding
+  it belongs, or consume only part of a supplied span to fit the bound. If the
+  complete atomic mutation set still cannot fit, fail without returning a plan
+  so Memory retains the entire batch for retry.
 - Use empty arrays when nothing should change.
 - Emit no code fence, commentary, report, cursor, work ID, commit hash, digest,
   or mechanical binding. Memory owns those values.
