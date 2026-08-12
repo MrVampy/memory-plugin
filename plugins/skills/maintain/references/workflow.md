@@ -28,6 +28,9 @@ complete supplied span deeply before deciding anything.
 ## Phase 2: Inspect the complete wiki
 
 Use the read-only tree at `$NAMESPACE/fs/memory`.
+Run every search and read synchronously. Do not launch background work: the
+one-shot executor must receive every result and return the final typed proposal
+in this turn.
 
 For a transcript task:
 
@@ -142,3 +145,4 @@ For a `memory-maintenance-repair-input.v2` envelope:
 - Never silently resolve a genuine contradiction.
 - Never invent facts.
 - Do not spawn another agent.
+- Do not launch background tools or commands.
