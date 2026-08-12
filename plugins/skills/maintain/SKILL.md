@@ -1,6 +1,6 @@
 ---
 name: maintain
-description: Execute one service-submitted bounded Memory maintenance pass or structural-repair task. Use only in the dedicated Memory reasoning profile when the prompt supplies a memory-maintenance-input.v3 or memory-maintenance-repair-input.v2 envelope. Process every supplied transcript span oldest-first, run the longer-cycle semantic passes when requested, search the complete admitted wiki, preserve the established maintenance judgment, and return one bounded memory-maintenance-plan.v1 proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
+description: Execute one service-submitted bounded Memory maintenance pass. Use only in the dedicated Memory reasoning profile when the prompt supplies a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run the longer-cycle semantic passes when requested, search the complete admitted wiki, preserve the established maintenance judgment, and return one bounded memory-maintenance-plan proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
 ---
 
 # Memory maintenance executor

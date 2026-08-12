@@ -92,4 +92,4 @@ already coherent entry alone. The goal is a cleaner wiki, not a different one.
 - Never silently resolve a contradiction by picking a winner.
 - Never delete without reading the entry and its inbound links in full.
 - Keep each proposal small enough for Memory to validate and apply atomically.
-- If a structural repair fails repeatedly, prefer no mutation to damage.
+- If a structural change cannot be made safely, prefer no mutation to damage.
