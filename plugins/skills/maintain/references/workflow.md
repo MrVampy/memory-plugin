@@ -38,6 +38,15 @@ Run every search and read synchronously. Do not launch background work: the
 one-shot executor must receive every result and return the final typed proposal
 in this turn.
 
+Run literal case-insensitive corpus searches through
+`$HOME/.local/bin/memory-wiki-search '<query>'`. The command returns Memory's
+bounded search result with matching entry IDs. If it reports
+`"truncated":true`, narrow the query and search again until each result is
+complete. Read a returned ID at `$NAMESPACE/fs/memory/<id>.md`. Do not run
+`rg`, `grep`, or another content scanner recursively over the projected wiki;
+that turns one indexed Memory query into a remote read of every entry. Use
+`rg --files` only when the workflow requires complete entry enumeration.
+
 For every transcript span, in array order:
 
 1. Search the entire wiki for the `source_key` in `meta.sources`. If it occurs,
