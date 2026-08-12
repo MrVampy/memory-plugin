@@ -18,7 +18,9 @@ service and a coherent read-only filesystem below `$NAMESPACE`.
   the user directly asks to change persistent memory.
 - `plugins/skills/maintain` preserves the established transcript-extraction and
   semantic-cleanup method for the dedicated Memory reasoning profile. It reads
-  the complete admitted wiki and returns a bounded typed proposal to Memory.
+  one bounded oldest-first multi-session pass plus any due longer-cycle
+  maintenance, searches the complete admitted wiki, and returns one typed
+  proposal to Memory.
 - `plugins/agents-md-snippet.md` is the small provider-neutral instruction
   block profiles may incorporate.
 

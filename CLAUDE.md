@@ -17,9 +17,10 @@ Read [README.md](./README.md) before changing the architecture.
   scheduler, installer, hooks, transcript scanners, cursor files, direct wiki
   writes, or provider-specific copies.
 - `plugins/skills/maintain` owns the semantic maintenance method used by a
-  dedicated Memory reasoning profile. It reads the admitted read-only Memory
-  projection and returns a typed proposal; it never schedules itself or owns
-  state.
+  dedicated Memory reasoning profile. It processes the service-supplied
+  bounded oldest-first session pass, reads the admitted read-only Memory
+  projection, and returns one typed proposal; it never schedules itself or
+  owns state.
 - Memory service owns automatic transcript maintenance. `create` is only for
   direct user requests to mutate persistent knowledge.
 - The Gleam validator enforces structure only. Never add content policy such
