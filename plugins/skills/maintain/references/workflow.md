@@ -33,18 +33,24 @@ anything. Do not collapse their source keys: provenance remains per span.
 
 ## Phase 2: Inspect the complete wiki
 
-Use the read-only tree at `$NAMESPACE/fs/memory`.
-Run every search and read synchronously. Do not launch background work: the
-one-shot executor must receive every result and return the final typed proposal
-in this turn.
+Resolve the read-only tree with one native Glob call using the exact pattern
+`/run/agent-namespace/*/fs/memory/*.md`. Every match must share exactly one
+concrete parent ending in `/fs/memory`; use that concrete parent for the rest
+of the turn. Native filesystem tools do not expand `$NAMESPACE`, so never pass
+that literal variable as a path and never use Bash or environment inspection
+to discover it. If the exact pattern returns no entries or entries below more
+than one parent, fail rather than returning an empty proposal. Run every search
+and read synchronously. Do not launch background work: the one-shot executor
+must receive every result and return the final typed proposal in this turn.
 
 Use the provider's ordinary native filesystem tools throughout: Glob for entry
 paths, Grep for case-insensitive corpus searches, and Read for complete entry
-contents. Scope them to `$NAMESPACE/fs/memory` exactly as you would scope them
-to a local repository. If a broad search returns too many results, narrow the
-query and continue until every plausible entry has been considered. Do not use
-a Memory-specific search command or RPC for wiki navigation. Do not substitute
-Bash, shell pipelines, or ad hoc helper programs for Glob, Grep, and Read.
+contents. Scope them to the resolved concrete wiki root exactly as you would
+scope them to a local repository. If a broad search returns too many results,
+narrow the query and continue until every plausible entry has been considered.
+Do not use a Memory-specific search command or RPC for wiki navigation. Do not
+substitute Bash, shell pipelines, environment inspection, or ad hoc helper
+programs for Glob, Grep, and Read.
 
 For every transcript span, in array order:
 
@@ -77,8 +83,9 @@ For each durable item:
 2. Preserve its original `meta.created` value.
 3. Set `meta.updated` to the current ISO timestamp.
 4. Append each source key that contributed to the change to `meta.sources` if
-   it is absent. Never replace or discard earlier sources, and do not attribute
-   one span's knowledge to a different span.
+   it is absent, serialized as a quoted YAML string. Never replace or discard
+   earlier sources, and do not attribute one span's knowledge to a different
+   span.
 5. If no existing entry fits, create one complete entry using
    [wiki-entry-format.md](wiki-entry-format.md). Derive its namespace from the
    corpus when that is useful, but create a new namespace when the knowledge
