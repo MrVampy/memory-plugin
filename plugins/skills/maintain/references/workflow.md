@@ -33,19 +33,18 @@ anything. Do not collapse their source keys: provenance remains per span.
 
 ## Phase 2: Inspect the complete wiki
 
-Resolve the read-only tree with one native Glob call using the exact pattern
-`/run/agent-namespace/*/fs/memory/*.md`. Every match must share exactly one
-concrete parent ending in `/fs/memory`; use that concrete parent for the rest
-of the turn. Native filesystem tools do not expand `$NAMESPACE`, so never pass
-that literal variable as a path and never use Bash or environment inspection
-to discover it. If the exact pattern returns no entries or entries below more
-than one parent, fail rather than returning an empty proposal. Run every search
-and read synchronously. Do not launch background work: the one-shot executor
-must receive every result and return the final typed proposal in this turn.
+Use the read-only tree at the stable private path
+`/run/agent/namespace/fs/memory`. Start with one native Glob call using pattern
+`*.md` and that exact path. Native filesystem tools do not expand
+`$NAMESPACE`, so never pass that literal variable as a path and never use Bash
+or environment inspection to discover it. If the exact root returns no
+entries, fail rather than returning an empty proposal. Run every search and
+read synchronously. Do not launch background work: the one-shot executor must
+receive every result and return the final typed proposal in this turn.
 
 Use the provider's ordinary native filesystem tools throughout: Glob for entry
 paths, Grep for case-insensitive corpus searches, and Read for complete entry
-contents. Scope them to the resolved concrete wiki root exactly as you would
+contents. Scope them to the stable wiki root exactly as you would
 scope them to a local repository. If a broad search returns too many results,
 narrow the query and continue until every plausible entry has been considered.
 Do not use a Memory-specific search command or RPC for wiki navigation. Do not

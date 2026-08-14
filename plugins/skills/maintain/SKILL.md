@@ -25,13 +25,12 @@ Read these references when the workflow routes you to them:
 - [references/maintenance-passes.md](references/maintenance-passes.md) for a
   semantic-maintenance task.
 
-The complete current wiki is available read-only below the current run's
-private namespace projection. Resolve it with one native Glob call using the
-exact pattern `/run/agent-namespace/*/fs/memory/*.md`; all matches must share
-one concrete parent ending in `/fs/memory`. Native filesystem tools do not
-expand `$NAMESPACE`, so never pass that literal variable as a path and never
-use Bash to discover it. Navigate the resolved root exactly like an ordinary
-local code tree: use the provider's native Glob tool to find entry files,
+The complete current wiki is available read-only at the stable private path
+`/run/agent/namespace/fs/memory`. Start with one native Glob call using pattern
+`*.md` and that exact path. Native filesystem tools do not expand
+`$NAMESPACE`, so never pass that literal variable as a path and never use Bash
+to discover it. Navigate the stable root exactly like an ordinary local code
+tree: use the provider's native Glob tool to find entry files,
 native Grep tool to search content, sources, titles, tags, links, and topics,
 and native Read tool to read plausible entries in full. Do not use a
 Memory-specific search client or RPC for corpus navigation, and do not replace
