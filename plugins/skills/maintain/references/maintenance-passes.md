@@ -91,5 +91,6 @@ already coherent entry alone. The goal is a cleaner wiki, not a different one.
 - Never remove a provenance source.
 - Never silently resolve a contradiction by picking a winner.
 - Never delete without reading the entry and its inbound links in full.
-- Keep each proposal small enough for Memory to validate and apply atomically.
+- Keep each semantic commit coherent and bounded enough for Memory to validate
+  and publish atomically.
 - If a structural change cannot be made safely, prefer no mutation to damage.
