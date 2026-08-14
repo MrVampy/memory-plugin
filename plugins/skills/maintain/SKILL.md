@@ -1,6 +1,6 @@
 ---
 name: maintain
-description: Execute one service-submitted bounded Memory maintenance pass inside an exact-head writable wiki checkout. Use for a Memory service turn carrying a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run requested corpus maintenance, inspect and edit the wiki with native tools, run memory validate, repair failures in the same reasoning loop, and create one meaningful semantic Git commit or an explicit no-change result. Never schedule work, advance Memory cursors, publish the authoritative branch, or spawn another agent.
+description: Execute one service-submitted bounded Memory maintenance pass inside an exact-head writable wiki checkout. Use for a Memory service turn carrying a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run requested corpus maintenance, inspect and edit the wiki with native tools, run memory validate, repair failures in the same reasoning loop, and create one meaningful semantic Git commit or leave the validated checkout unchanged. Never schedule work, advance Memory cursors, publish the authoritative branch, or spawn another agent.
 ---
 
 # Memory maintenance executor
@@ -30,6 +30,5 @@ subagent.
 
 Do not return until the checkout is structurally valid and cleanly committed,
 or until you have deeply considered the complete batch and proven that no wiki
-change is warranted. Return only the typed `memory-maintenance-result`
-requested by the workflow. Memory independently verifies and publishes the
-result.
+change is warranted. Print only a concise human summary when finished. Memory
+derives the result from Git and independently verifies and publishes it.
