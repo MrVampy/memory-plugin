@@ -26,9 +26,9 @@ reading transcript content:
 2. Run `git rev-parse HEAD`.
 3. Require HEAD to equal `repository_head` and require a clean working tree.
 
-Fail without producing a result if the checkout identity or ancestry does not
-match. Do not clone another repository, change remotes, switch branches, reset
-to an unrelated revision, or leave the checkout.
+Fail without changing the checkout if its identity or ancestry does not match.
+Do not clone another repository, change remotes, switch branches, reset to an
+unrelated revision, or leave the checkout.
 
 Memory guarantees queue chronology. Process every transcript span in array
 order and read it deeply. Do not collapse source keys: provenance remains
@@ -109,7 +109,7 @@ intended semantic wiki changes and no generated, temporary, credential, or
 control files. Run `memory validate .` once more after the final
 review.
 
-## Phase 5: Commit or report no change
+## Phase 5: Commit or finish unchanged
 
 ### Changed wiki
 
@@ -135,17 +135,8 @@ After committing, verify:
 4. The commit subject and nonempty body are exactly the meaningful message you
    intended.
 
-Return exactly this compact JSON object:
-
-```json
-{
-  "schema_id": "memory-maintenance-result",
-  "outcome": "committed",
-  "repository_head": "<exact input head>",
-  "resulting_commit": "<exact committed OID>",
-  "summary": "<exact commit subject>"
-}
-```
+Print one concise human summary of the concrete knowledge recorded. Do not
+restate the commit hash, repository head, work identity, or transcript body.
 
 ### No wiki change
 
@@ -153,26 +144,15 @@ If the complete batch warrants no mutation, require HEAD to remain exactly
 `repository_head`, require `git status --short` to be empty, and require
 `memory validate .` to succeed.
 
-Return exactly:
+Print one concise human explanation of why no durable change was warranted.
+Emit no code fence, validator report, transcript text, cursor, work identity,
+credential, repository head, or commit hash.
 
-```json
-{
-  "schema_id": "memory-maintenance-result",
-  "outcome": "no_change",
-  "repository_head": "<exact input head>",
-  "resulting_commit": "<same exact input head>",
-  "summary": "<concise explanation of why no durable change was warranted>"
-}
-```
-
-The summary must be meaningful and bounded. Emit no code fence, commentary,
-validator report, transcript text, cursor, work ID, credential, or additional
-field around the result.
-
-Memory will independently verify the checkout result, exact ancestry, tree
-shape, validator result, and commit metadata before it publishes the
-authoritative wiki branch. A publication transport failure is Memory's
-responsibility and does not justify changing the semantic commit.
+The final summary is informational. Memory derives committed versus unchanged
+from the checkout itself and independently verifies exact ancestry, tree shape,
+validator result, and commit metadata before it publishes the authoritative
+wiki branch. A publication transport failure is Memory's responsibility and
+does not justify changing the semantic commit.
 
 ## Invariants
 
