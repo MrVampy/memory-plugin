@@ -39,7 +39,10 @@ to the agent and user.
 
 - Keep one current contract and delete retired machinery in the same cutover.
 - Do not inspect or commit the user's live wiki.
-- Validate skill metadata with the Codex skill validator after edits.
+- Validate the provider-neutral skill metadata with the Codex skill validator
+  after edits. `maintain` is installed only into Claude Code and uses Claude's
+  `disallowed-tools` frontmatter to enforce its read-only native-tool boundary;
+  prove that field through the pinned Claude one-shot path.
 - Run compiling and Nix checks through the infrastructure's declared M7 build
   lane when this repository is consumed by `vault-apps` or `nix-flake`.
 - Commit exact pathspecs and publish source before dependency propagation.

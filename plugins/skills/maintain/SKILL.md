@@ -1,6 +1,13 @@
 ---
 name: maintain
 description: Execute one service-submitted bounded Memory maintenance pass. Use only for a Memory service turn whose prompt supplies a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run the longer-cycle semantic passes when requested, search the complete admitted wiki, preserve the established maintenance judgment, and return one bounded memory-maintenance-plan proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
+disallowed-tools:
+  - Agent
+  - Bash
+  - Edit
+  - NotebookEdit
+  - Task
+  - Write
 ---
 
 # Memory maintenance executor
