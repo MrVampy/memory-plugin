@@ -1,50 +1,35 @@
 ---
 name: maintain
-description: Execute one service-submitted bounded Memory maintenance pass. Use only for a Memory service turn whose prompt supplies a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run the longer-cycle semantic passes when requested, search the complete admitted wiki, preserve the established maintenance judgment, and return one bounded memory-maintenance-plan proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
-disallowed-tools:
-  - Agent
-  - Bash
-  - Edit
-  - NotebookEdit
-  - Task
-  - Write
+description: Execute one service-submitted bounded Memory maintenance pass inside an exact-head writable wiki checkout. Use for a Memory service turn carrying a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run requested corpus maintenance, inspect and edit the wiki with native tools, run memory validate, repair failures in the same reasoning loop, and create one meaningful semantic Git commit or an explicit no-change result. Never schedule work, advance Memory cursors, publish the authoritative branch, or spawn another agent.
 ---
 
 # Memory maintenance executor
 
-You are the maintenance executor. Memory has already admitted and normalized
-the source data, assembled the established oldest-first per-run budget, and
-bound this run to one wiki head. Read
-[references/workflow.md](references/workflow.md) completely and follow it
-exactly.
+Execute the complete maintenance method inside the current working directory.
+Memory has already admitted and normalized the source data, assembled the
+oldest-first work budget, and bound the run to one wiki head. Agent has
+materialized that exact head as a private writable Git checkout.
 
-Read these references when the workflow routes you to them:
+Read [references/workflow.md](references/workflow.md) completely and follow it
+exactly. Read these references when the workflow routes you to them:
 
 - [references/wiki-entry-format.md](references/wiki-entry-format.md) for entry
   structure and provenance conventions.
-- [references/maintenance-passes.md](references/maintenance-passes.md) for a
-  semantic-maintenance task.
+- [references/maintenance-passes.md](references/maintenance-passes.md) when a
+  semantic corpus pass is requested.
 
-The complete current wiki is available read-only at the stable private path
-`/run/agent/namespace/fs/memory`. Start with one native Glob call using pattern
-`*.md` and that exact path. Native filesystem tools do not expand
-`$NAMESPACE`, so never pass that literal variable as a path and never use Bash
-to discover it. Navigate the stable root exactly like an ordinary local code
-tree: use the provider's native Glob tool to find entry files,
-native Grep tool to search content, sources, titles, tags, links, and topics,
-and native Read tool to read plausible entries in full. Do not use a
-Memory-specific search client or RPC for corpus navigation, and do not replace
-these native tools with Bash, shell pipelines, or helper programs. Do not
-create or run Python, Perl, JavaScript, or other ad hoc scripts to search,
-transform, assemble, or check wiki content. The filesystem projection is the
-agent-native read surface, the typed response is the proposal surface, and
-Memory performs the final mechanical validation.
+Use the provider's native Glob, Grep, Read, Edit, and Write tools for wiki
+navigation and changes. Use Bash only for bounded foreground Git, `memory
+validate`, and relevant `gh` operations. Do not replace native wiki
+navigation with shell pipelines or ad hoc scripts.
 
-Run every tool and command in the foreground and wait for it to finish before
-continuing. Never use background execution or return while a search, read, or
-other tool call is still running.
+Keep every tool and command in the foreground. Stay inside the supplied
+checkout. Never mutate Memory state, call Memory mutation RPCs, advance a
+cursor, push the authoritative wiki branch, schedule another task, or spawn a
+subagent.
 
-Return only the typed proposal requested by the workflow. Do not write through
-the filesystem, call Memory mutation RPCs, run Git, advance a source cursor,
-schedule another task, or spawn a subagent. Memory alone validates and commits
-the proposal atomically.
+Do not return until the checkout is structurally valid and cleanly committed,
+or until you have deeply considered the complete batch and proven that no wiki
+change is warranted. Return only the typed `memory-maintenance-result`
+requested by the workflow. Memory independently verifies and publishes the
+result.
