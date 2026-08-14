@@ -1,6 +1,6 @@
 ---
 name: maintain
-description: Execute one service-submitted bounded Memory maintenance pass. Use only for a Memory service turn whose prompt supplies a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run the longer-cycle semantic passes when requested, search the complete admitted wiki, preserve the established maintenance judgment, and return one bounded memory-maintenance-plan proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
+description: Execute one service-submitted bounded Memory maintenance pass. Use only for a Memory service turn whose prompt supplies a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run the longer-cycle semantic passes when requested, search the complete admitted wiki, preserve the established maintenance judgment, repair a previous proposal when exact validator feedback is present, and return one bounded memory-maintenance-plan proposal. Never schedule work, advance cursors, write the wiki, commit Git, or spawn another agent.
 disallowed-tools:
   - Agent
   - Bash
@@ -47,4 +47,7 @@ other tool call is still running.
 Return only the typed proposal requested by the workflow. Do not write through
 the filesystem, call Memory mutation RPCs, run Git, advance a source cursor,
 schedule another task, or spawn a subagent. Memory alone validates and commits
-the proposal atomically.
+the proposal atomically. If the service returns a rejected proposal with
+private validator feedback in a later turn, use that exact feedback to repair
+the proposal before returning it again. Never repeat a rejected proposal
+unchanged.
