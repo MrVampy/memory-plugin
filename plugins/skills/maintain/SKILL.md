@@ -7,8 +7,8 @@ description: Execute one service-submitted bounded Memory maintenance pass insid
 
 Execute the complete maintenance method inside the current working directory.
 Memory has already admitted and normalized the source data, assembled the
-oldest-first work budget, and bound the run to one wiki head. Agent has
-materialized that exact head as a private writable Git checkout.
+oldest-first work budget, and bound the run to one wiki head. Agent has been
+started in Memory's same-host writable Git checkout at that exact head.
 
 Read [references/workflow.md](references/workflow.md) completely and follow it
 exactly. Read these references when the workflow routes you to them:
