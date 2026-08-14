@@ -145,6 +145,12 @@ Rules:
   original entry at the bound head, and occur exactly once in that entry. Use
   the shortest context that is still unique. `new_text` is the complete text
   that replaces that occurrence and may be empty.
+- Treat `old_text` as byte-exact Markdown, not as prose to reconstruct. Preserve
+  every hard line break, space, indentation byte, and punctuation mark shown by
+  Read. Never join or reflow wrapped source lines. Prefer one unique complete
+  existing line; if a target spans lines, include `\n` exactly at each source
+  line break. Re-read every edit target immediately before composing the final
+  proposal.
 - All replacements in one edit bind independently to the original entry, not
   to the result of an earlier replacement. They must not overlap. Compose
   changes that touch the same region into one replacement.
