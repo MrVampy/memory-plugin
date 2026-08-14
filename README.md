@@ -17,10 +17,10 @@ service and a coherent read-only filesystem below `$NAMESPACE`.
 - `plugins/skills/create` submits an explicit, head-bound, atomic mutation when
   the user directly asks to change persistent memory.
 - `plugins/skills/maintain` preserves the established transcript-extraction and
-  semantic-cleanup method for the dedicated Memory reasoning profile. It reads
-  one bounded oldest-first multi-session pass plus any due longer-cycle
-  maintenance, searches the complete admitted wiki, and returns one typed
-  proposal to Memory.
+  semantic-cleanup method for the host-native Agent application selected by
+  Memory. It reads one bounded oldest-first multi-session pass plus any due
+  longer-cycle maintenance, searches the complete admitted wiki, and returns
+  one typed proposal to Memory.
 - `plugins/agents-md-snippet.md` is the small provider-neutral instruction
   block profiles may incorporate.
 
