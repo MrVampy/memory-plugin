@@ -133,8 +133,9 @@ batch.
 Write a human-facing commit message:
 
 - The subject must concisely describe what actually changed in the wiki.
-- Use an optional body to explain important decisions or group several related
-  changes.
+- The body must describe the concrete knowledge added, corrected, reorganized,
+  or removed, including important decisions that are not obvious from the
+  subject.
 - Never use a generic subject such as `Memory maintenance`, a run ID, a work
   ID, a timestamp, or a hash.
 - Do not put transcript contents, credentials, or other private material in
@@ -146,7 +147,8 @@ After committing, verify:
 1. `git rev-parse HEAD^` equals `repository_head`.
 2. `git status --short` is empty.
 3. `memory validate .` succeeds at the committed tree.
-4. The commit subject and body are exactly the meaningful message you intended.
+4. The commit subject and nonempty body are exactly the meaningful message you
+   intended.
 
 Return exactly this compact JSON object:
 
