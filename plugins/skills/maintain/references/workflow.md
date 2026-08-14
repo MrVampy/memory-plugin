@@ -43,7 +43,8 @@ paths, Grep for case-insensitive corpus searches, and Read for complete entry
 contents. Scope them to `$NAMESPACE/fs/memory` exactly as you would scope them
 to a local repository. If a broad search returns too many results, narrow the
 query and continue until every plausible entry has been considered. Do not use
-a Memory-specific search command or RPC for wiki navigation.
+a Memory-specific search command or RPC for wiki navigation. Do not substitute
+Bash, shell pipelines, or ad hoc helper programs for Glob, Grep, and Read.
 
 For every transcript span, in array order:
 
@@ -155,6 +156,9 @@ Rules:
 - Use empty arrays when nothing should change.
 - Emit no code fence, commentary, report, cursor, work ID, commit hash, digest,
   or mechanical binding. Memory owns those values.
+- Do not create a helper script to construct or pre-validate the response.
+  Return the typed proposal directly and let Memory perform the authoritative
+  bounded parse, staging, and structural validation.
 
 Memory stages the proposal against the exact head, validates the complete wiki,
 and either commits every mutation or none. If structural validation rejects a
