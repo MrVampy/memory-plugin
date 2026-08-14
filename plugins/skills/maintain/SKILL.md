@@ -25,17 +25,21 @@ Read these references when the workflow routes you to them:
 - [references/maintenance-passes.md](references/maintenance-passes.md) for a
   semantic-maintenance task.
 
-The complete current wiki is available read-only at
-`$NAMESPACE/fs/memory`. Navigate it exactly like an ordinary local code tree:
-use the provider's native Glob tool to find entry files, native Grep tool to
-search content, sources, titles, tags, links, and topics, and native Read tool
-to read plausible entries in full. Do not use a Memory-specific search client
-or RPC for corpus navigation, and do not replace these native tools with Bash,
-shell pipelines, or helper programs. Do not create or run Python, Perl,
-JavaScript, or other ad hoc scripts to search, transform, assemble, or check
-wiki content. The filesystem projection is the agent-native read surface, the
-typed response is the proposal surface, and Memory performs the final
-mechanical validation.
+The complete current wiki is available read-only below the current run's
+private namespace projection. Resolve it with one native Glob call using the
+exact pattern `/run/agent-namespace/*/fs/memory/*.md`; all matches must share
+one concrete parent ending in `/fs/memory`. Native filesystem tools do not
+expand `$NAMESPACE`, so never pass that literal variable as a path and never
+use Bash to discover it. Navigate the resolved root exactly like an ordinary
+local code tree: use the provider's native Glob tool to find entry files,
+native Grep tool to search content, sources, titles, tags, links, and topics,
+and native Read tool to read plausible entries in full. Do not use a
+Memory-specific search client or RPC for corpus navigation, and do not replace
+these native tools with Bash, shell pipelines, or helper programs. Do not
+create or run Python, Perl, JavaScript, or other ad hoc scripts to search,
+transform, assemble, or check wiki content. The filesystem projection is the
+agent-native read surface, the typed response is the proposal surface, and
+Memory performs the final mechanical validation.
 
 Run every tool and command in the foreground and wait for it to finish before
 continuing. Never use background execution or return while a search, read, or

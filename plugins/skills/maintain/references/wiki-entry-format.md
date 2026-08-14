@@ -20,7 +20,7 @@ meta:
   created: "2026-04-09T10:00:00Z"
   updated: "2026-04-11T12:00:00Z"
   sources:
-    - source-session-key
+    - "source-session-key"
 ---
 
 # Section heading
@@ -42,6 +42,8 @@ Body text with an [[other.entry.id]] reference matching the frontmatter link.
 6. Every link target exists and every label is non-empty.
 7. `meta.created`, `meta.updated`, and the `meta.sources` list are present.
 8. Timestamps are quoted ISO 8601 strings.
+9. Every `meta.sources` item is a quoted YAML string. Source keys can contain
+   colons, so an unquoted value is not structurally equivalent.
 
 Everything else is free. The validator does not prescribe topics, namespaces,
 kinds, titles, tag meanings, section layout, or what deserves to be remembered.
@@ -53,6 +55,6 @@ These provenance rules preserve the established workflow:
 
 - Keep the original `meta.created` value.
 - Set `meta.updated` to the current ISO timestamp.
-- Append the current source key to `meta.sources` without removing or
-  duplicating earlier values.
+- Append the current source key to `meta.sources` as a quoted YAML string
+  without removing or duplicating earlier values.
 - Keep body references and frontmatter links bidirectionally synchronized.
