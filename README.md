@@ -3,10 +3,12 @@
 `memory-plugin` owns the structural validator and reusable coding-agent skills
 for the namespace-native Memory system.
 
-The live wiki is owned by a configured Memory service instance. Agents do not
-receive a copied wiki directory, a service endpoint, or credentials. Their
-runtime projects one authenticated Memory subtree as the local `memory` 9P
-service and a coherent read-only filesystem below `$NAMESPACE`.
+The live wiki is owned by a configured Memory service instance. Recall and
+explicit mutation use its authenticated local `memory` projection. For one
+automatic maintenance turn, Memory gives the selected host-native Agent its
+exact-head writable Git checkout and a non-secret publication binding. The
+Agent obtains one bounded credential through the already admitted local
+namespace; no endpoint, certificate, or credential is embedded in a skill.
 
 ## Components
 
@@ -19,14 +21,17 @@ service and a coherent read-only filesystem below `$NAMESPACE`.
 - `plugins/skills/maintain` preserves the established transcript-extraction and
   semantic-cleanup method for the host-native Agent application selected by
   Memory. It reads one bounded oldest-first multi-session pass plus any due
-  longer-cycle maintenance, searches the complete admitted wiki, and returns
-  one typed proposal to Memory.
+  longer-cycle maintenance, searches the complete local wiki, repairs its own
+  validation failures, creates one semantic commit, and publishes it with an
+  exact head lease.
 - `plugins/agents-md-snippet.md` is the small provider-neutral instruction
   block profiles may incorporate.
 
-Automatic transcript ingestion, ordering, scheduling, validation, commit, and
-publication are service responsibilities. There is no agent-side scheduler,
-local wiki installer, direct-write maintenance path, or provider-specific hook.
+Automatic transcript ingestion, ordering, scheduling, independent result
+verification, and cursor completion are service responsibilities. The one
+maintenance Agent turn owns semantic edits, validation and repair, its commit,
+and exact-lease publication. There is no agent-side scheduler, local wiki
+installer, or provider-specific hook.
 
 ## Namespace contract used by the skills
 
@@ -50,6 +55,12 @@ The runtime supervisor retains all remote addressing and authentication
 material. The filesystem is read-only and cache-coherent through Memory's
 blocking namespace change feed. Skills use only these local surfaces.
 
+The maintenance skill additionally works in Memory's supplied writable Git
+checkout. Its prompt carries the expected head and non-secret repository and
+credential binding. It requests one short-lived GitHub App authorization with
+`r9p rpc credentials/use/github-app` through the existing local namespace and
+passes the resulting token only to the exact Git push child environment.
+
 ## Nix outputs
 
 The flake exports:
@@ -60,7 +71,7 @@ The flake exports:
 - `lib.skills.create`
 - `lib.skills.maintain`
 
-Profile repositories pin this flake and place the exported skill trees in the
+Host profiles pin this flake and place the exported skill trees in the
 harness-native `.codex/skills` or `.claude/skills` directory. The skills have
 one source and remain ordinary provider-native profile content.
 

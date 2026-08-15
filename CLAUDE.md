@@ -2,8 +2,9 @@
 
 This repository owns three reusable namespace-native skills and the structural
 wiki validator. The private Memory service consumes these artifacts; it owns
-live wiki state, automatic maintenance scheduling, mutation validation, Git
-history, and publication.
+live wiki state, automatic maintenance scheduling, independent result
+validation, and cursor completion. One maintenance Agent turn owns the semantic
+edit, validation-repair loop, Git commit, and exact-lease publication.
 
 Read [README.md](./README.md) before changing the architecture.
 
@@ -18,9 +19,11 @@ Read [README.md](./README.md) before changing the architecture.
   writes, or provider-specific copies.
 - `plugins/skills/maintain` owns the semantic maintenance method used by the
   host-native Agent application selected by Memory. It processes the
-  service-supplied bounded oldest-first session pass, reads the admitted
-  read-only Memory projection, and returns one typed proposal; it never
-  schedules itself or owns state.
+  service-supplied bounded oldest-first session pass in Memory's exact-head
+  writable checkout, repairs its own validation failures, creates one semantic
+  commit, requests one bounded publication credential through the local
+  namespace, and pushes with an exact lease. It never schedules itself or owns
+  Memory state.
 - Memory service owns automatic transcript maintenance. `create` is only for
   direct user requests to mutate persistent knowledge.
 - The Gleam validator enforces structure only. Never add content policy such
@@ -40,9 +43,10 @@ to the agent and user.
 - Keep one current contract and delete retired machinery in the same cutover.
 - Do not inspect or commit the user's live wiki.
 - Validate the provider-neutral skill metadata with the Codex skill validator
-  after edits. `maintain` is installed only into Claude Code and uses Claude's
-  `disallowed-tools` frontmatter to enforce its read-only native-tool boundary;
-  prove that field through the pinned Claude one-shot path.
+  after edits. `maintain` is installed only into Claude Code and must retain
+  native read, edit, write, and bounded Bash access for its complete
+  edit-validate-commit-publish loop; prove the workflow through the pinned
+  Claude one-shot path.
 - Run compiling and Nix checks through the infrastructure's declared M7 build
   lane when this repository is consumed by `vault-apps` or `nix-flake`.
 - Commit exact pathspecs and publish source before dependency propagation.
