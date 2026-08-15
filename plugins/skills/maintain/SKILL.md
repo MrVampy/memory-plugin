@@ -1,6 +1,6 @@
 ---
 name: maintain
-description: Execute one service-submitted bounded Memory maintenance pass inside an exact-head writable wiki checkout. Use for a Memory service turn carrying a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run requested corpus maintenance, inspect and edit the wiki with native tools, run memory validate, repair failures in the same reasoning loop, and create one meaningful semantic Git commit or leave the validated checkout unchanged. Never schedule work, advance Memory cursors, publish the authoritative branch, or spawn another agent.
+description: Execute one service-submitted bounded Memory maintenance pass inside an exact-head writable wiki checkout. Use for a Memory service turn carrying a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run requested corpus maintenance, inspect and edit the wiki with native tools, repair validation failures, create one meaningful semantic Git commit, and publish it through the admitted local credential namespace with an exact head lease. Never schedule work, advance Memory cursors, or spawn another agent.
 ---
 
 # Memory maintenance executor
@@ -20,15 +20,17 @@ exactly. Read these references when the workflow routes you to them:
 
 Use the provider's native Glob, Grep, Read, Edit, and Write tools for wiki
 navigation and changes. Use Bash only for bounded foreground Git, `memory
-validate`, and relevant `gh` operations. Do not replace native wiki
-navigation with shell pipelines or ad hoc scripts.
+validate`, and the exact local-namespace credential and publication sequence
+documented in the workflow. Do not replace native wiki navigation with shell
+pipelines or ad hoc scripts.
 
 Keep every tool and command in the foreground. Stay inside the supplied
 checkout. Never mutate Memory state, call Memory mutation RPCs, advance a
-cursor, push the authoritative wiki branch, schedule another task, or spawn a
-subagent.
+cursor, schedule another task, or spawn a subagent. The single exact-lease Git
+push required by the workflow is the only publication action.
 
 Do not return until the checkout is structurally valid and cleanly committed,
 or until you have deeply considered the complete batch and proven that no wiki
 change is warranted. Print only a concise human summary when finished. Memory
-derives the result from Git and independently verifies and publishes it.
+derives the result from Git and independently verifies the authoritative remote
+head before completing the durable cursor.
