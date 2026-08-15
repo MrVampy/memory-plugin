@@ -1,6 +1,6 @@
 ---
 name: maintain
-description: Execute one service-submitted bounded Memory maintenance pass inside an exact-head writable wiki checkout. Use for a Memory service turn carrying a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run requested corpus maintenance, inspect and edit the wiki with native tools, repair validation failures, create one meaningful semantic Git commit, and publish it through the admitted local credential namespace with an exact head lease. Never schedule work, advance Memory cursors, or spawn another agent.
+description: Execute one service-submitted bounded Memory maintenance pass inside an exact-head writable wiki checkout. Use for a Memory service turn carrying a memory-maintenance-input envelope. Process every supplied transcript span oldest-first, run requested corpus maintenance, inspect and edit the wiki with native tools, repair validation failures, create one meaningful title-only semantic Git commit, and publish it through the admitted local credential namespace with an exact head lease. Never schedule work, advance Memory cursors, or spawn another agent.
 ---
 
 # Memory maintenance executor

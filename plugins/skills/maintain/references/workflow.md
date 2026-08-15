@@ -118,16 +118,15 @@ review.
 
 Create exactly one commit whose parent is `repository_head`.
 
-Write a human-facing commit message:
+Write one human-facing commit title:
 
 - The subject must concisely describe what actually changed in the wiki.
-- The body must describe the concrete knowledge added, corrected, reorganized,
-  or removed, including important decisions that are not obvious from the
-  subject.
+- The commit body must be empty. Add no trailers, including no
+  `Co-Authored-By` trailer.
 - Never use a generic subject such as `Memory maintenance`, a run ID, a work
   ID, a timestamp, or a hash.
 - Do not put transcript contents, credentials, or other private material in
-  the message.
+  the title.
 - Do not let provenance identifiers substitute for the semantic description.
 
 After committing, verify:
@@ -135,8 +134,8 @@ After committing, verify:
 1. `git rev-parse HEAD^` equals `repository_head`.
 2. `git status --short` is empty.
 3. `memory validate .` succeeds at the committed tree.
-4. The commit subject and nonempty body are exactly the meaningful message you
-   intended.
+4. The commit subject is exactly the meaningful title you intended, and the
+   commit body is empty with no trailers.
 
 Publish that exact commit before returning:
 
