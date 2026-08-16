@@ -3,7 +3,7 @@
 /// the typed Entry schema.
 import gleam/dynamic/decode
 import gleam/json
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import memory/entry.{type Entry, type Link, Entry, Link, Meta}
@@ -78,9 +78,19 @@ fn frontmatter_decoder() -> decode.Decoder(FrontmatterDocument) {
     use id <- decode.field("id", decode.string)
     use title <- decode.field("title", decode.string)
     use kind <- decode.field("kind", decode.string)
-    use tags <- optional_list_field("tags", decode.string)
-    use links <- optional_list_field("links", link_decoder())
+    use optional_tags <- decode.optional_field(
+      "tags",
+      None,
+      decode.optional(decode.list(of: decode.string)),
+    )
+    use optional_links <- decode.optional_field(
+      "links",
+      None,
+      decode.optional(decode.list(of: link_decoder())),
+    )
     use meta <- decode.field("meta", meta_decoder())
+    let tags = optional_list(optional_tags)
+    let links = optional_list(optional_links)
     decode.success(FrontmatterDocument(id:, title:, kind:, tags:, links:, meta:))
   }
 }
@@ -102,21 +112,11 @@ fn meta_decoder() -> decode.Decoder(FrontmatterMeta) {
   }
 }
 
-fn optional_list_field(
-  name: String,
-  item_decoder: decode.Decoder(item),
-) -> decode.Decoder(List(item)) {
-  decode.optional_field(
-    name,
-    None,
-    decode.optional(decode.list(of: item_decoder)),
-  )
-  |> decode.map(fn(value) {
-    case value {
-      Some(items) -> items
-      None -> []
-    }
-  })
+fn optional_list(value: Option(List(item))) -> List(item) {
+  case value {
+    Some(items) -> items
+    None -> []
+  }
 }
 
 @external(javascript, "./ffi/yaml.mjs", "parseDocument")
