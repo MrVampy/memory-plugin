@@ -18,7 +18,6 @@ prepare_dependencies() {
   rm -rf build
   mkdir -p build/packages
   cp -R --dereference --no-preserve=mode "$packages/." build/packages/
-  sed -i '/^yamerl = /d' build/packages/yay/gleam.toml
 }
 
 case ${1:-} in
