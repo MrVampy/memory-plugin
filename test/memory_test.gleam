@@ -18,6 +18,33 @@ pub fn parses_and_validates_a_structural_entry_test() {
   assert validate.validate_all([entry]) == []
 }
 
+pub fn parses_repeated_link_fields_and_colon_bearing_sources_test() {
+  let document =
+    "---\nid: test.links\ntitle: Link fixture\nkind: fixture\ntags:\n  - test\nlinks:\n  - target: test.first\n    label: first\n  - target: test.second\n    label: second\nmeta:\n  created: \"2026-08-10T00:00:00\"\n  updated: \"2026-08-10T00:00:00\"\n  sources:\n    - \"tuxedo:session:one\"\n---\n\nSee [[test.first]] and [[test.second]].\n"
+
+  let assert Ok(entry) = frontmatter.parse_file(document, "test.links.md")
+  assert entry.links
+    == [
+      Link(target: "test.first", label: "first"),
+      Link(target: "test.second", label: "second"),
+    ]
+  assert entry.meta.sources == ["tuxedo:session:one"]
+}
+
+pub fn rejects_duplicate_yaml_keys_test() {
+  let document =
+    "---\nid: test.first\nid: test.second\ntitle: Duplicate fixture\nkind: fixture\nmeta:\n  created: \"2026-08-10T00:00:00\"\n  updated: \"2026-08-10T00:00:00\"\n  sources: []\n---\n\nDuplicate fixture.\n"
+
+  let assert Error(_) = frontmatter.parse_file(document, "test.duplicate.md")
+}
+
+pub fn rejects_implicitly_typed_yaml_timestamps_test() {
+  let document =
+    "---\nid: test.timestamp\ntitle: Timestamp fixture\nkind: fixture\nmeta:\n  created: 2026-08-10T00:00:00.000Z\n  updated: \"2026-08-10T00:00:00\"\n  sources: []\n---\n\nTimestamp fixture.\n"
+
+  let assert Error(_) = frontmatter.parse_file(document, "test.timestamp.md")
+}
+
 pub fn rejects_a_link_to_an_absent_entry_test() {
   let entry =
     fixture_entry(

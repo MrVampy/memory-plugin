@@ -1,9 +1,27 @@
-/// YAML frontmatter parser using yay (pure Gleam YAML parser).
-/// Splits markdown into frontmatter + body, parses frontmatter into Entry.
+/// YAML frontmatter parser.
+/// Splits markdown into frontmatter and body, then decodes the frontmatter into
+/// the typed Entry schema.
+import gleam/dynamic/decode
+import gleam/json
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import memory/entry.{type Entry, type Link, Entry, Link, Meta}
-import yay
+
+type FrontmatterDocument {
+  FrontmatterDocument(
+    id: String,
+    title: String,
+    kind: String,
+    tags: List(String),
+    links: List(Link),
+    meta: FrontmatterMeta,
+  )
+}
+
+type FrontmatterMeta {
+  FrontmatterMeta(created: String, updated: String, sources: List(String))
+}
 
 /// Split a markdown file into raw frontmatter string and body string.
 /// Expects --- delimiters.
@@ -29,77 +47,77 @@ pub fn split(content: String) -> Result(#(String, String), String) {
 
 /// Parse a full markdown file (frontmatter + body) into an Entry.
 pub fn parse_file(content: String, file_path: String) -> Result(Entry, String) {
-  use #(yaml_str, body) <- result.try(split(content))
-  use docs <- result.try(
-    yay.parse_string(yaml_str)
+  use #(yaml_source, body) <- result.try(split(content))
+  use json_source <- result.try(
+    parse_document(yaml_source)
     |> result.map_error(fn(_) { "YAML parse error" }),
   )
-  use doc <- result.try(case docs {
-    [doc] -> Ok(doc)
-    _ -> Error("expected exactly one YAML document in frontmatter")
-  })
-
-  let root = yay.document_root(doc)
-
-  use id <- result.try(extract(root, "id"))
-  use title <- result.try(extract(root, "title"))
-  use kind <- result.try(extract(root, "kind"))
-  use tags <- result.try(parse_tags(root))
-  use created <- result.try(extract(root, "meta.created"))
-  use updated <- result.try(extract(root, "meta.updated"))
-  use sources <- result.try(extract_list(root, "meta.sources"))
-  use links <- result.try(parse_links(root))
+  use document <- result.try(
+    json.parse(json_source, frontmatter_decoder())
+    |> result.map_error(fn(_) { "invalid frontmatter structure" }),
+  )
 
   Ok(Entry(
-    id: id,
-    title: title,
-    kind: kind,
-    tags: tags,
-    links: links,
-    meta: Meta(created: created, updated: updated, sources: sources),
+    id: document.id,
+    title: document.title,
+    kind: document.kind,
+    tags: document.tags,
+    links: document.links,
+    meta: Meta(
+      created: document.meta.created,
+      updated: document.meta.updated,
+      sources: document.meta.sources,
+    ),
     body: body,
     file_path: file_path,
   ))
 }
 
-/// Extract a string field, mapping error to a readable message.
-fn extract(node: yay.Node, key: String) -> Result(String, String) {
-  yay.extract_string(node, key)
-  |> result.map_error(fn(_) { "missing or invalid '" <> key <> "' field" })
-}
-
-/// Extract a string list field, mapping error to a readable message.
-fn extract_list(node: yay.Node, key: String) -> Result(List(String), String) {
-  yay.extract_string_list(node, key)
-  |> result.map_error(fn(_) { "missing or invalid '" <> key <> "' field" })
-}
-
-/// Parse the tags array from the YAML root node.
-/// Missing or empty tags key defaults to empty list.
-fn parse_tags(root: yay.Node) -> Result(List(String), String) {
-  case yay.extract_string_list(root, "tags") {
-    Ok(tags) -> Ok(tags)
-    Error(yay.KeyMissing(..)) -> Ok([])
-    Error(yay.KeyValueEmpty(..)) -> Ok([])
-    Error(_) -> Error("invalid 'tags' field")
+fn frontmatter_decoder() -> decode.Decoder(FrontmatterDocument) {
+  {
+    use id <- decode.field("id", decode.string)
+    use title <- decode.field("title", decode.string)
+    use kind <- decode.field("kind", decode.string)
+    use tags <- optional_list_field("tags", decode.string)
+    use links <- optional_list_field("links", link_decoder())
+    use meta <- decode.field("meta", meta_decoder())
+    decode.success(FrontmatterDocument(id:, title:, kind:, tags:, links:, meta:))
   }
 }
 
-/// Parse the links array from the YAML root node.
-fn parse_links(root: yay.Node) -> Result(List(Link), String) {
-  case yay.extract_list_with(root, "links", parse_single_link) {
-    Ok(links) -> Ok(links)
-    // If links key is missing, that's fine — no links
-    Error(yay.KeyMissing(..)) -> Ok([])
-    Error(yay.KeyValueEmpty(..)) -> Ok([])
-    Error(err) ->
-      Error("invalid 'links' field: " <> yay.extraction_error_to_string(err))
+fn link_decoder() -> decode.Decoder(Link) {
+  {
+    use target <- decode.field("target", decode.string)
+    use label <- decode.field("label", decode.string)
+    decode.success(Link(target:, label:))
   }
 }
 
-/// Parse a single link node.
-fn parse_single_link(node: yay.Node) -> Result(Link, yay.ExtractionError) {
-  use target <- result.try(yay.extract_string(node, "target"))
-  use label <- result.try(yay.extract_string(node, "label"))
-  Ok(Link(target: target, label: label))
+fn meta_decoder() -> decode.Decoder(FrontmatterMeta) {
+  {
+    use created <- decode.field("created", decode.string)
+    use updated <- decode.field("updated", decode.string)
+    use sources <- decode.field("sources", decode.list(of: decode.string))
+    decode.success(FrontmatterMeta(created:, updated:, sources:))
+  }
 }
+
+fn optional_list_field(
+  name: String,
+  item_decoder: decode.Decoder(item),
+) -> decode.Decoder(List(item)) {
+  decode.optional_field(
+    name,
+    None,
+    decode.optional(decode.list(of: item_decoder)),
+  )
+  |> decode.map(fn(value) {
+    case value {
+      Some(items) -> items
+      None -> []
+    }
+  })
+}
+
+@external(javascript, "./ffi/yaml.mjs", "parseDocument")
+fn parse_document(content: String) -> Result(String, Nil)
