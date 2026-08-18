@@ -47,9 +47,25 @@
         memory-validator = mkValidator system;
       });
 
-      checks = forAllSystems (system: {
-        memory-validator = mkValidator system;
-      });
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          memory-validator = mkValidator system;
+          memory-skills = pkgs.runCommand "memory-skills-check" { } ''
+            grep -F '.memory/wiki' ${./plugins/skills/recall/SKILL.md} >/dev/null
+            grep -F '.memory/wiki' ${./plugins/skills/create/SKILL.md} >/dev/null
+            grep -F '"schema_id": "memory-entry-mutation-request"' ${./plugins/skills/create/SKILL.md} >/dev/null
+            grep -F 'memory-entry-mutation-result' ${./plugins/skills/create/SKILL.md} >/dev/null
+            ! grep -R -F '$NAMESPACE/fs/memory' ${./plugins/skills/recall} ${./plugins/skills/create}
+            ! grep -R -F 'r9p rpc memory/ctl/entries' ${./plugins/skills/create}
+            ! grep -R -E 'memory-entry-mutation-(request|result)\.v[0-9]+' ${./plugins/skills/create}
+            touch "$out"
+          '';
+        }
+      );
 
       devShells = forAllSystems (
         system:
