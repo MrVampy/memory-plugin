@@ -1,14 +1,17 @@
 # memory-plugin
 
 `memory-plugin` owns the structural validator and reusable coding-agent skills
-for the namespace-native Memory system.
+for the host-native Memory system.
 
 The live wiki is owned by a configured Memory service instance. Recall and
-explicit mutation use its authenticated local `memory` projection. For one
-automatic maintenance turn, Memory gives the selected host-native Agent its
-exact-head writable Git checkout and a non-secret publication binding. The
-Agent obtains one bounded credential through the already admitted local
-namespace; no endpoint, certificate, or credential is embedded in a skill.
+explicit-mutation discovery read the current host's ordinary
+`~/.memory/wiki` Git checkout at filesystem speed. Explicit mutation still
+uses the current host's authenticated `/memory/<host>/ctl/entries` control.
+For one automatic maintenance turn, Memory gives the selected host-native
+Agent its exact-head writable Git checkout and a non-secret publication
+binding. The Agent obtains one bounded credential through its already admitted
+local namespace; no endpoint, certificate, or credential is embedded in a
+skill.
 
 ## Components
 
@@ -33,27 +36,31 @@ maintenance Agent turn owns semantic edits, validation and repair, its commit,
 and exact-lease publication. There is no agent-side scheduler, local wiki
 installer, or provider-specific hook.
 
-## Namespace contract used by the skills
+## Host-native contract used by the skills
 
-The runtime exposes one stable local service name:
+Every Memory host keeps one native read-only replica for ordinary agent use:
 
 ```text
-$NAMESPACE/memory
-$NAMESPACE/fs/memory
+~/.memory/wiki
 ```
 
 Useful operations are:
 
-```text
-r9p read memory/status
-rg --glob '*.md' QUERY "$NAMESPACE/fs/memory"
-rg --files "$NAMESPACE/fs/memory"
-r9p rpc memory/ctl/entries
+```bash
+rg --glob '*.md' QUERY "${HOME}/.memory/wiki"
+rg --files "${HOME}/.memory/wiki"
+git -C "${HOME}/.memory/wiki" rev-parse HEAD
 ```
 
-The runtime supervisor retains all remote addressing and authentication
-material. The filesystem is read-only and cache-coherent through Memory's
-blocking namespace change feed. Skills use only these local surfaces.
+Memory advances the checkout only after authenticated Dependencies journal
+events and validated fast-forward Git reconciliation. Skills treat it as
+read-only even when Unix permissions allow writes. There is no FUSE mirror or
+runtime projection client.
+
+Explicit mutations remain service-owned. Create submits one head-bound request
+to the current host's `/memory/<host>/ctl/entries` through an already admitted
+Coordinator namespace session. Host identity and connection material come
+from the surrounding runtime binding, never from the skill.
 
 The maintenance skill additionally works in Memory's supplied writable Git
 checkout. Its prompt carries the expected head and non-secret repository and
@@ -67,6 +74,7 @@ The flake exports:
 
 - `packages.<system>.memory-validator`
 - `checks.<system>.memory-validator`
+- `checks.<system>.memory-skills`
 - `lib.skills.recall`
 - `lib.skills.create`
 - `lib.skills.maintain`
@@ -97,7 +105,7 @@ titles, or what is worth remembering. It types structure, not content.
 ## Development
 
 The validator is a Gleam project packaged by Nix. Service implementation,
-runtime projection, credentials, transcripts, and wiki contents live outside
+runtime controls, credentials, transcripts, and wiki contents live outside
 this public repository.
 
 Do not put credential material or a live wiki in this repository. Consumers

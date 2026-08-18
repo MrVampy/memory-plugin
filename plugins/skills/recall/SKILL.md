@@ -1,29 +1,30 @@
 ---
 name: recall
-description: Consult the user's namespace-native Memory service for prior decisions, preferences, project history, and personal context. Always use this before acting on a topic that may have prior context. Use native grep, glob, and file reads through the admitted read-only Memory filesystem, follow wiki links when relevant, and cite entry IDs in the response.
+description: Consult the user's host-native Memory wiki for prior decisions, preferences, project history, and personal context. Always use this before acting on a topic that may have prior context. Use native grep, glob, and file reads against the local ~/.memory/wiki checkout, follow wiki links when relevant, and cite entry IDs in the response.
 ---
 
 # Recall persistent context
 
-Use the private `memory` service and read-only filesystem projected into
-`$NAMESPACE`. Do not read a host-local `~/.memory` directory and do not look
-for service endpoints, certificates, or host addresses.
+Use the host-local read-only checkout at `${HOME}/.memory/wiki`. Memory keeps
+that ordinary Git repository converged to the authoritative remote head. Do
+not use a namespace projection, search another host, fetch or pull the
+repository, or mutate the checkout.
 
 ## Discover relevant entries
 
-1. Read `memory/status` with r9p and confirm that the service is ready.
-1. Set the wiki root to `$NAMESPACE/fs/memory` and require that it is a
-   readable directory.
+1. Set the wiki root to `${HOME}/.memory/wiki` and require that it is a
+   readable directory containing Markdown entries.
 1. Search contents with `rg`, using bounded, distinctive literal or regular
    expression queries and `--glob '*.md'` as appropriate.
-1. Browse IDs with ordinary shell globs or `rg --files "$NAMESPACE/fs/memory"`
+1. Browse IDs with ordinary shell globs or `rg --files "${HOME}/.memory/wiki"`
    when a filename prefix or namespace is more useful than content search.
 1. Read matching `.md` files with ordinary file tools.
 1. Follow relevant `[[linked.entry.id]]` references by reading
-   `$NAMESPACE/fs/memory/linked.entry.id.md`.
+   `${HOME}/.memory/wiki/linked.entry.id.md`.
 
-The mounted tree is an admitted, coherent, read-only projection of the Memory
-service. It is not a copied wiki and must never be mutated directly.
+The local checkout is the current host's native Memory replica. Treat it as
+read-only even when Unix permissions allow writes. Memory alone owns
+replication and service-directed mutation.
 
 ## Use recalled knowledge
 
